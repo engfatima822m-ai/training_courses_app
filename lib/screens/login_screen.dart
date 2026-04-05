@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/services/data_service.dart';
+import 'package:training_courses_app/services/api_service.dart';
 import 'package:training_courses_app/screens/courses_list_screen.dart';
 import 'package:training_courses_app/screens/admin_dashboard.dart';
 
@@ -21,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
 
-  // ✅ غيّري هذا الباسورد إلى القيمة التي تريدينها
   static const String adminPassword = 'ADMIN001';
 
   @override
@@ -32,14 +32,16 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // ✅ التحقق من أن الاسم موجود فعلاً ضمن الموظفين
+  // ✅ (مؤقت) للتحقق من الاسم داخل القائمة فقط
   bool _isValidEmployeeName(String name) {
     return DataService.employees.any(
       (user) => user.fullName.trim() == name.trim(),
     );
   }
 
-  // ✅ دالة تسجيل الدخول
+  // ==============================
+  // 🔐 تسجيل الدخول عبر API
+  // ==============================
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -47,72 +49,78 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    User? matchedUser;
-
-    for (final user in DataService.employees) {
-      if (user.fullName.trim() == _nameController.text.trim() &&
-          user.employeeId.trim() == _employeeIdController.text.trim()) {
-        matchedUser = user;
-        break;
-      }
-    }
-
-    if (!mounted) return;
-
-    if (matchedUser != null) {
-      final adminPasswordInput = _adminPasswordController.text.trim();
-
-      // ✅ إذا حقل باسورد الأدمن فارغ → دخول عادي
-      if (adminPasswordInput.isEmpty) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CoursesListScreen(user: matchedUser!),
-          ),
-        );
-        return;
-      }
-
-      // ✅ إذا كُتب باسورد الأدمن وكان صحيحًا → دخول إلى لوحة الأدمن
-      if (adminPasswordInput == adminPassword) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AdminDashboard(user: matchedUser!),
-          ),
-        );
-        return;
-      }
-
-      // ✅ إذا كُتب باسورد أدمن لكنه خطأ
-      setState(() {
-        _isLoading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('كلمة مرور الأدمن غير صحيحة'),
-          backgroundColor: Colors.red,
-        ),
+    try {
+      final result = await ApiService.loginUser(
+        fullName: _nameController.text.trim(),
+        fingerprintId: _employeeIdController.text.trim(),
       );
-    } else {
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        final userData = result['user'];
+
+        final user = User(
+          fullName: userData['full_name'],
+          employeeId: userData['fingerprint_id'],
+          grade: int.parse(userData['grade'].toString()),
+          isAdmin: false,
+        );
+
+        final adminPasswordInput = _adminPasswordController.text.trim();
+
+        setState(() {
+          _isLoading = false;
+        });
+
+        // ✅ دخول عادي
+        if (adminPasswordInput.isEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CoursesListScreen(user: user),
+            ),
+          );
+          return;
+        }
+
+        // ✅ دخول أدمن
+        if (adminPasswordInput == adminPassword) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AdminDashboard(user: user),
+            ),
+          );
+          return;
+        }
+
+        // ❌ باسورد الأدمن خطأ
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('كلمة مرور الأدمن غير صحيحة'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'بيانات غير صحيحة'),
+          ),
+        );
+      }
+    } catch (e) {
       setState(() {
         _isLoading = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('بيانات غير صحيحة'),
+          content: Text('خطأ في الاتصال بالسيرفر'),
         ),
       );
     }
@@ -132,12 +140,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Icon(Icons.school, size: 80, color: Colors.blue),
                 const SizedBox(height: 20),
                 const Text(
-                  'يرجى إدخال بيانات الموظف للدخول إلى نظام الدورات التدريبية في شركة توزيع المنتجات النفطية \\فرع',
+                  'يرجى إدخال بيانات الموظف للدخول إلى نظام الدورات التدريبية في شركة توزيع المنتجات النفطية / فرع البصرة',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 30),
 
-                // 🔹 الاسم مع Autocomplete
+                // 🔹 الاسم (Autocomplete)
                 Autocomplete<User>(
                   optionsBuilder: (TextEditingValue textEditingValue) {
                     if (textEditingValue.text.isEmpty) {
@@ -201,7 +209,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                // 🔹 ملاحظة حقل باسورد الأدمن
                 const Align(
                   alignment: Alignment.centerRight,
                   child: Text(
