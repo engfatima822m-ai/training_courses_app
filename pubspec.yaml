@@ -19,9 +19,10 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.0.0+1
-
 environment:
-  sdk: ^3.10.7
+  sdk: ">=3.10.0 <4.0.0"
+
+
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -37,6 +38,10 @@ dependencies:
   excel: ^2.1.0
   path_provider: ^2.1.2
   cupertino_icons: ^1.0.8
+  pdf: ^3.11.3
+  printing: ^5.14.3
+  arabic_reshaper: 0.0.1
+  bidi: 2.0.10
 
   # file_picker: ^6.1.1
     
@@ -67,6 +72,9 @@ flutter:
   assets:
     - assets/employees.xlsx
     - assets/courses.xlsx
+    - assets/images/logo.png
+    - assets/fonts/Tajawal-Regular.ttf
+    - assets/fonts/Tajawal-Bold.ttf
   
 
   # The following line ensures that the Material Icons font is

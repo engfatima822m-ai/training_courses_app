@@ -6,9 +6,7 @@ class AddCourseScreenCustom extends StatefulWidget {
   const AddCourseScreenCustom({super.key});
 
   @override
-  State<AddCourseScreenCustom> createState() {
-    return _AddCourseScreenCustomState();
-  }
+  State<AddCourseScreenCustom> createState() => _AddCourseScreenCustomState();
 }
 
 class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
@@ -25,7 +23,12 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
   DateTime? _selectedDate;
   bool _isLoading = false;
 
-  final String addCourseUrl = 'http://10.0.2.2/training_api/add_course.php';
+  static const Color blackColor = Color(0xFF1A1A1A);
+  static const Color darkPurple = Color(0xFF2D033B);
+  static const Color lightPurple = Color(0xFFF2E8F8);
+  static const Color fieldPurple = Color(0xFFF7F1FB);
+
+  final String addCourseUrl = 'http://localhost/training_api/add_course.php';
 
   @override
   void dispose() {
@@ -48,9 +51,7 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     );
 
     if (pickedDate != null) {
-      setState(() {
-        _selectedDate = pickedDate;
-      });
+      setState(() => _selectedDate = pickedDate);
     }
   }
 
@@ -81,17 +82,11 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('يرجى اختيار تأريخ الدورة'),
-        ),
-      );
+      _showMessage('يرجى اختيار تأريخ الدورة', Colors.red);
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final response = await http.post(
@@ -113,241 +108,340 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
       if (!mounted) return;
 
       if (response.statusCode == 200 && data['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? 'تمت إضافة الدورة بنجاح'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
+        _showMessage(data['message'] ?? 'تمت إضافة الدورة بنجاح', Colors.green);
         Navigator.pop(context, true);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message'] ?? 'حدث خطأ أثناء إضافة الدورة'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showMessage(data['message'] ?? 'حدث خطأ أثناء إضافة الدورة', Colors.red);
       }
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('فشل الاتصال بالسيرفر: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showMessage('فشل الاتصال بالسيرفر: $e', Colors.red);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  InputDecoration _inputDecoration(String hintText, Color fillColor) {
+  void _showMessage(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, textAlign: TextAlign.right),
+        backgroundColor: color,
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hintText, IconData icon) {
     return InputDecoration(
       filled: true,
-      fillColor: fillColor,
+      fillColor: fieldPurple,
       hintText: hintText,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+      hintTextDirection: TextDirection.rtl,
+      prefixIcon: Icon(icon, color: darkPurple),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(color: darkPurple.withOpacity(0.15)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: darkPurple, width: 1.4),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    int maxLines = 1,
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          label,
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            color: blackColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          readOnly: readOnly,
+          onTap: onTap,
+          maxLines: maxLines,
+          textAlign: TextAlign.right,
+          textDirection: TextDirection.rtl,
+          textInputAction: TextInputAction.next,
+          decoration: _inputDecoration(hint, icon),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return '$label مطلوب';
+            }
+            return null;
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        const Text(
+          'تأريخ الدورة',
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            color: blackColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _pickDate,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            decoration: BoxDecoration(
+              color: fieldPurple,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: darkPurple.withOpacity(0.15)),
+            ),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                const Icon(Icons.calendar_month_rounded, color: darkPurple),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _selectedDate == null
+                        ? 'اختر تأريخ الدورة'
+                        : _formatDate(_selectedDate!),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: _selectedDate == null ? Colors.black54 : blackColor,
+                      fontWeight:
+                          _selectedDate == null ? FontWeight.normal : FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [
+            blackColor,
+            darkPurple,
+            blackColor,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 48),
+          SizedBox(height: 14),
+          Text(
+            'إضافة دورة تدريبية جديدة',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 27,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'يرجى إدخال بيانات الدورة ليتم إعلانها للموظفين',
+            textAlign: TextAlign.right,
+            style: TextStyle(color: Colors.white70, fontSize: 15),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResponsiveFields(double width) {
+    final crossAxisCount = width >= 1100
+        ? 3
+        : width >= 750
+            ? 2
+            : 1;
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: crossAxisCount,
+      crossAxisSpacing: 18,
+      mainAxisSpacing: 18,
+      childAspectRatio: crossAxisCount == 1 ? 5.3 : 3.6,
+      children: [
+        _buildTextField(
+          label: 'عنوان الدورة',
+          controller: _titleController,
+          hint: 'ادخل عنوان الدورة',
+          icon: Icons.title_rounded,
+        ),
+        _buildTextField(
+          label: 'اسم المحاضر',
+          controller: _trainerController,
+          hint: 'ادخل اسم المحاضر',
+          icon: Icons.person_rounded,
+        ),
+        _buildDateField(),
+        _buildTextField(
+          label: 'وقت الدورة',
+          controller: _timeController,
+          hint: 'اختر وقت الدورة',
+          icon: Icons.access_time_rounded,
+          readOnly: true,
+          onTap: _pickTime,
+        ),
+        _buildTextField(
+          label: 'مدة الدورة',
+          controller: _durationController,
+          hint: 'مثال: 3 أيام أو أسبوع',
+          icon: Icons.timer_outlined,
+        ),
+        _buildTextField(
+          label: 'مكان الدورة',
+          controller: _locationController,
+          hint: 'ادخل مكان الدورة',
+          icon: Icons.location_on_rounded,
+        ),
+        _buildTextField(
+          label: 'الدرجة الوظيفية',
+          controller: _gradeController,
+          hint: 'مثال: 2,3 أو اكتب الكل',
+          icon: Icons.badge_rounded,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return _buildTextField(
+      label: 'وصف الدورة',
+      controller: _descriptionController,
+      hint: 'ادخل وصف الدورة',
+      icon: Icons.description_rounded,
+      maxLines: 5,
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: _isLoading ? null : _submitCourse,
+        icon: _isLoading
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.save_rounded),
+        label: Text(_isLoading ? 'جاري الإضافة...' : 'إضافة الدورة'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: darkPurple,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          textStyle: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('إضافة دورة جديدة'),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text('عنوان الدورة'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _titleController,
-                textInputAction: TextInputAction.next,
-                textAlign: TextAlign.end,
-                decoration: _inputDecoration(
-                  'ادخل عنوان الدورة',
-                  const Color.fromARGB(255, 122, 138, 205),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'عنوان الدورة مطلوب';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              const Text('اسم المدرب'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _trainerController,
-                textInputAction: TextInputAction.next,
-                textAlign: TextAlign.end,
-                decoration: _inputDecoration(
-                  'ادخل اسم المدرب',
-                  const Color.fromARGB(255, 106, 146, 178),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'اسم المدرب مطلوب';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              const Text('تأريخ الدورة'),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: _pickDate,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 228, 232, 248),
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _selectedDate == null
-                        ? 'اختر تأريخ الدورة'
-                        : _formatDate(_selectedDate!),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              const Text('وقت الدورة'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _timeController,
-                readOnly: true,
-                textAlign: TextAlign.end,
-                decoration: _inputDecoration(
-                  'اختر وقت الدورة',
-                  const Color.fromARGB(255, 232, 243, 255),
-                ).copyWith(
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.access_time),
-                    onPressed: _pickTime,
-                  ),
-                ),
-                onTap: _pickTime,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'وقت الدورة مطلوب';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              const Text('مدة الدورة'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _durationController,
-                textInputAction: TextInputAction.next,
-                textAlign: TextAlign.end,
-                decoration: _inputDecoration(
-                  'مثال: 3 أيام أو أسبوع',
-                  const Color.fromARGB(255, 240, 236, 255),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'مدة الدورة مطلوبة';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              const Text('مكان الدورة'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _locationController,
-                textInputAction: TextInputAction.next,
-                textAlign: TextAlign.end,
-                decoration: _inputDecoration(
-                  'ادخل مكان الدورة',
-                  const Color.fromARGB(255, 236, 250, 240),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'مكان الدورة مطلوب';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              const Text('الدرجة الوظيفية'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _gradeController,
-                textInputAction: TextInputAction.next,
-                textAlign: TextAlign.end,
-                decoration: _inputDecoration(
-                  'مثال: 2,3',
-                  const Color.fromARGB(255, 255, 244, 233),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'الدرجة الوظيفية مطلوبة';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              const Text('وصف الدورة'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _descriptionController,
-                textAlign: TextAlign.end,
-                maxLines: 4,
-                decoration: _inputDecoration(
-                  'ادخل وصف الدورة',
-                  const Color.fromARGB(255, 245, 245, 245),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'وصف الدورة مطلوب';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 30),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitCourse,
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('إضافة الدورة'),
-                ),
-              ),
-            ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: lightPurple,
+        appBar: AppBar(
+          backgroundColor: blackColor,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          title: const Text(
+            'إضافة دورة جديدة',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
+        ),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(22),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 22),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(
+                          color: darkPurple.withOpacity(0.08),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildResponsiveFields(constraints.maxWidth),
+                          const SizedBox(height: 20),
+                          _buildDescriptionField(),
+                          const SizedBox(height: 26),
+                          _buildSubmitButton(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

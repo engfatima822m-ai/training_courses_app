@@ -4,13 +4,20 @@ import 'package:http/http.dart' as http;
 import 'package:training_courses_app/models/course.dart';
 
 class ApiService {
-  // ✅ تحديد الرابط حسب نوع التشغيل
+  // ✅ رابط الـ API حسب نوع التشغيل
   static String get baseUrl {
+    // عند التشغيل على المتصفح
     if (kIsWeb) {
       return 'http://localhost/training_api';
-    } else {
-      return 'http://10.0.2.2/training_api';
     }
+
+    // عند التشغيل على Windows Desktop
+    // حالياً نشتغل على اللابتوب/الحاسبة، لذلك localhost هو الصحيح
+    return 'http://localhost/training_api';
+
+    // ملاحظة لاحقاً:
+    // إذا رجعنا نشغل على Android Emulator نستعمل:
+    // return 'http://10.0.2.2/training_api';
   }
 
   /// ==============================
@@ -23,7 +30,14 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((item) => Course.fromJson(item)).toList();
+
+      return data
+          .map((item) => Course.fromJson(item))
+          .where((course) =>
+              course.title.trim().isNotEmpty &&
+              course.instructor.trim().isNotEmpty &&
+              course.date.year > 2000)
+          .toList();
     } else {
       throw Exception('فشل في تحميل الدورات');
     }
@@ -76,11 +90,7 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
 
-      if (data['success'] == true) {
-        return true;
-      } else {
-        return false;
-      }
+      return data['success'] == true;
     } else {
       throw Exception('فشل في الاتصال بالسيرفر');
     }

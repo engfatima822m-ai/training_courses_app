@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:training_courses_app/core/theme/app_colors.dart';
 import 'package:training_courses_app/models/course.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/screens/add_course_screen_custom.dart';
+import 'package:training_courses_app/screens/course_details_screen.dart';
 import 'package:training_courses_app/screens/login_screen.dart';
 import 'package:training_courses_app/services/api_service.dart';
 
@@ -17,6 +17,11 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   late Future<List<Course>> _coursesFuture;
+
+  static const Color blackColor = Color(0xFF111111);
+  static const Color darkPurple = Color(0xFF2D033B);
+  static const Color deepPurple = Color(0xFF4B0082);
+  static const Color softPurple = Color(0xFF7B2CBF);
 
   @override
   void initState() {
@@ -37,202 +42,331 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
 
     if (result == true) {
-      setState(() {
-        _loadCourses();
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم تحديث قائمة الدورات'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      setState(_loadCourses);
+      _showMessage('تم تحديث قائمة الدورات بنجاح');
     }
   }
 
-  void _showEditMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('سيتم تفعيل تعديل الدورة في الخطوة التالية'),
+  void _openCourseDetails(Course course) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CourseDetailsScreen(
+          course: course,
+          user: widget.user,
+        ),
       ),
+    );
+  }
+
+  void _showRegistrants(Course course) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            title: const Text(
+              'مراقبة المسجلين',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: darkPurple,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  course.title,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _dialogInfo('المحاضر', course.instructor),
+                _dialogInfo('الموقع', course.location),
+                _dialogInfo('عدد المسجلين حالياً', '${course.registeredCount}'),
+                const SizedBox(height: 12),
+                const Text(
+                  'ملاحظة: حالياً يتم عرض العدد فقط، وبعد ربط جدول التسجيلات نعرض أسماء المسجلين هنا.',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black54,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('إغلاق'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _dialogInfo(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          '$label: ${value.isEmpty ? 'غير محدد' : value}',
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  void _logout() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
+  }
+
+  void _showMessage(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text, textAlign: TextAlign.right),
+        backgroundColor: softPurple,
+      ),
+    );
+  }
+
+  Widget _buildHeader(List<Course> courses) {
+    final totalRegistrations =
+        courses.fold<int>(0, (sum, c) => sum + c.registeredCount);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(26),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [blackColor, darkPurple, blackColor],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.24),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Icon(
+            Icons.admin_panel_settings_rounded,
+            color: Colors.white,
+            size: 48,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'مرحباً، ${widget.user.fullName}',
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 25,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'لوحة شعبة التدريب لإدارة الدورات التدريبية',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.72),
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 22),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: StatCard(
+                  icon: Icons.school_rounded,
+                  title: 'الدورات',
+                  value: '${courses.length}',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  icon: Icons.groups_rounded,
+                  title: 'المسجلين',
+                  value: '$totalRegistrations',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String text, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 12),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Icon(icon, color: darkPurple),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: darkPurple,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: SizedBox(
+        height: 54,
+        child: ElevatedButton.icon(
+          onPressed: onTap,
+          icon: Icon(icon),
+          label: Text(text),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: darkPurple,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            textStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActions() {
+    return Row(
+      textDirection: TextDirection.rtl,
+      children: [
+        _actionButton(
+          text: 'إضافة دورة',
+          icon: Icons.add_rounded,
+          onTap: _openAddCourseScreen,
+        ),
+        const SizedBox(width: 12),
+        _actionButton(
+          text: 'تحديث',
+          icon: Icons.refresh_rounded,
+          onTap: () => setState(_loadCourses),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('لوحة تحكم المدير'),
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
-            },
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF6F2FA),
+        appBar: AppBar(
+          backgroundColor: blackColor,
+          foregroundColor: Colors.white,
+          centerTitle: true,
+          automaticallyImplyLeading: false,
+          title: const Text(
+            'شعبة التدريب',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-        ],
-      ),
-      body: FutureBuilder<List<Course>>(
-        future: _coursesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout_rounded),
+              onPressed: _logout,
+            ),
+          ],
+        ),
+        body: FutureBuilder<List<Course>>(
+          future: _coursesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(color: deepPurple),
+              );
+            }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('حدث خطأ: ${snapshot.error}'),
-            );
-          }
+            final courses = snapshot.data ?? [];
 
-          final courses = snapshot.data ?? [];
-          final int totalRegistrations =
-              courses.fold(0, (sum, course) => sum + course.registeredCount);
-
-          return Scrollbar(
-            thumbVisibility: true,
-            child: ListView(
-              padding: const EdgeInsets.all(20),
+            return ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: AppColors.darkBlue,
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(30),
-                      bottomRight: Radius.circular(30),
+                _buildHeader(courses),
+                _sectionTitle('صلاحيات شعبة التدريب', Icons.verified_user),
+                _buildActions(),
+                _sectionTitle('إدارة الدورات المعلنة', Icons.menu_book_rounded),
+
+                if (courses.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(22),
+                    ),
+                    child: const Text(
+                      'لا توجد دورات مضافة حالياً',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: darkPurple,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+                else
+                  ...courses.map(
+                    (course) => AdminCourseItem(
+                      course: course,
+                      onDetails: () => _openCourseDetails(course),
+                      onViewRegistrants: () => _showRegistrants(course),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Icon(
-                        Icons.admin_panel_settings,
-                        size: 50,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'مرحباً، ${widget.user.fullName}',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        textDirection: TextDirection.rtl,
-                      ),
-                      const Text(
-                        'مدير النظام',
-                        style: TextStyle(fontSize: 16, color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: StatCard(
-                              icon: Icons.school,
-                              title: 'إجمالي الدورات',
-                              value: '${courses.length}',
-                              color: Colors.blue,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: StatCard(
-                              icon: Icons.people,
-                              title: 'إجمالي المسجلين',
-                              value: '$totalRegistrations',
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.shade200,
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text(
-                              'قائمة الدورات',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.darkBlue,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            if (courses.isEmpty)
-                              const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: Text('لا توجد دورات حالياً'),
-                                ),
-                              )
-                            else
-                              ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: courses.length,
-                                separatorBuilder: (context, index) =>
-                                    const Divider(height: 24),
-                                itemBuilder: (context, index) {
-                                  final course = courses[index];
-                                  return AdminCourseItem(
-                                    course: course,
-                                    onEdit: _showEditMessage,
-                                  );
-                                },
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddCourseScreen,
-        backgroundColor: AppColors.darkBlue,
-        foregroundColor: Colors.white,
-        icon: const Icon(
-          Icons.add,
-          color: Colors.white,
+            );
+          },
         ),
-        label: const Text(
-          'إضافة دورة',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _openAddCourseScreen,
+          backgroundColor: darkPurple,
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add),
+          label: const Text('إضافة دورة'),
         ),
       ),
     );
@@ -243,51 +377,47 @@ class StatCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
-  final Color color;
 
   const StatCard({
     super.key,
     required this.icon,
     required this.title,
     required this.value,
-    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      height: 145,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.18),
+        ),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 40, color: color),
-          const SizedBox(height: 12),
+          Icon(icon, color: Colors.white, size: 30),
+          const SizedBox(height: 10),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: color,
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
             textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.70),
+            ),
           ),
         ],
       ),
@@ -297,83 +427,134 @@ class StatCard extends StatelessWidget {
 
 class AdminCourseItem extends StatelessWidget {
   final Course course;
-  final VoidCallback onEdit;
+  final VoidCallback onDetails;
+  final VoidCallback onViewRegistrants;
 
   const AdminCourseItem({
     super.key,
     required this.course,
-    required this.onEdit,
+    required this.onDetails,
+    required this.onViewRegistrants,
   });
+
+  static const Color darkPurple = Color(0xFF2D033B);
+  static const Color deepPurple = Color(0xFF4B0082);
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    return '$year/$month/$day';
+  }
+
+  Widget _chip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: darkPurple.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        textDirection: TextDirection.rtl,
+        children: [
+          Icon(icon, size: 16, color: deepPurple),
+          const SizedBox(width: 5),
+          Text(
+            text.isEmpty ? 'غير محدد' : text,
+            style: const TextStyle(
+              color: darkPurple,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          course.title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1E3A8A),
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: darkPurple.withOpacity(0.10)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
-          textDirection: TextDirection.rtl,
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(
-              course.instructor,
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.person, size: 16, color: Colors.grey),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(
-              '${course.date.day}/${course.date.month}/${course.date.year}',
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.green.shade200),
-          ),
-          child: Text(
-            '${course.registeredCount} مسجل',
-            style: TextStyle(
-              color: Colors.green.shade700,
-              fontSize: 12,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            course.title,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: darkPurple,
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-
-        // ✅ أزرار الإدارة
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            OutlinedButton.icon(
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit, size: 18),
-              label: const Text('تعديل'),
-            ),
-          ],
-        ),
-      ],
+          const SizedBox(height: 12),
+          Wrap(
+            alignment: WrapAlignment.end,
+            textDirection: TextDirection.rtl,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _chip(Icons.person_rounded, course.instructor),
+              _chip(Icons.location_on_rounded, course.location),
+              _chip(Icons.calendar_month_rounded, _formatDate(course.date)),
+              _chip(Icons.access_time_rounded, course.time),
+              _chip(Icons.people_rounded, 'المسجلين: ${course.registeredCount}'),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: onDetails,
+                  icon: const Icon(Icons.info_outline_rounded),
+                  label: const Text('تفاصيل الدورة'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: darkPurple,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onViewRegistrants,
+                  icon: const Icon(Icons.groups_rounded),
+                  label: const Text('مراقبة المسجلين'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: deepPurple,
+                    side: const BorderSide(color: deepPurple),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:training_courses_app/services/data_service.dart';
-import 'screens/login_screen.dart';
+import 'package:training_courses_app/screens/splash_screen.dart';
 import 'package:training_courses_app/core/theme/app_colors.dart';
 
 /// ==============================
@@ -21,7 +21,6 @@ class TrainingCoursesApp extends StatefulWidget {
 }
 
 class _TrainingCoursesAppState extends State<TrainingCoursesApp> {
-
   @override
   void initState() {
     super.initState();
@@ -39,20 +38,17 @@ class _TrainingCoursesAppState extends State<TrainingCoursesApp> {
       // ⭐ الثيم العام للتطبيق
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.white,
-
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           primary: AppColors.primary,
           secondary: AppColors.secondary,
         ),
-
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           centerTitle: true,
           elevation: 0,
         ),
-
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.secondary,
@@ -64,7 +60,7 @@ class _TrainingCoursesAppState extends State<TrainingCoursesApp> {
         ),
       ),
 
-      home: const LoginScreen(),
+      home: const SplashScreen(),
     );
   }
 }
