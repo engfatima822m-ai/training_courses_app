@@ -19,6 +19,7 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _gradeController = TextEditingController();
+  final _capacityController = TextEditingController(text: '30');
 
   DateTime? _selectedDate;
   bool _isLoading = false;
@@ -39,6 +40,7 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     _locationController.dispose();
     _descriptionController.dispose();
     _gradeController.dispose();
+    _capacityController.dispose();
     super.dispose();
   }
 
@@ -86,6 +88,9 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
       return;
     }
 
+    final registrationStartDate = DateTime.now();
+    final registrationEndDate = registrationStartDate.add(const Duration(days: 9));
+
     setState(() => _isLoading = true);
 
     try {
@@ -93,13 +98,24 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
         Uri.parse(addCourseUrl),
         body: {
           'title': _titleController.text.trim(),
+
+          // أول محاضر يبقى للتوافق مع الكود القديم
           'instructor': _trainerController.text.trim(),
+
+          // المحاضرين المتعددين بصيغة نص مفصول بفارزة
+          'instructors': _trainerController.text.trim(),
+
           'date': _formatDate(_selectedDate!),
           'time': _timeController.text.trim(),
           'duration': _durationController.text.trim(),
           'location': _locationController.text.trim(),
           'description': _descriptionController.text.trim(),
           'grade': _gradeController.text.trim(),
+
+          // الحقول الجديدة
+          'capacity': _capacityController.text.trim(),
+          'registration_start_date': _formatDate(registrationStartDate),
+          'registration_end_date': _formatDate(registrationEndDate),
         },
       );
 
@@ -165,6 +181,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     int maxLines = 1,
     bool readOnly = false,
     VoidCallback? onTap,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -184,16 +202,18 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
           readOnly: readOnly,
           onTap: onTap,
           maxLines: maxLines,
+          keyboardType: keyboardType,
           textAlign: TextAlign.right,
           textDirection: TextDirection.rtl,
           textInputAction: TextInputAction.next,
           decoration: _inputDecoration(hint, icon),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return '$label مطلوب';
-            }
-            return null;
-          },
+          validator: validator ??
+              (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return '$label مطلوب';
+                }
+                return null;
+              },
         ),
       ],
     );
@@ -205,7 +225,6 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
       children: [
         const Text(
           'تأريخ الدورة',
-          textAlign: TextAlign.right,
           style: TextStyle(
             color: blackColor,
             fontWeight: FontWeight.bold,
@@ -237,8 +256,9 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: _selectedDate == null ? Colors.black54 : blackColor,
-                      fontWeight:
-                          _selectedDate == null ? FontWeight.normal : FontWeight.bold,
+                      fontWeight: _selectedDate == null
+                          ? FontWeight.normal
+                          : FontWeight.bold,
                     ),
                   ),
                 ),
@@ -247,6 +267,60 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildRegistrationInfoCard() {
+    final start = _formatDate(DateTime.now());
+    final end = _formatDate(DateTime.now().add(const Duration(days: 9)));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: lightPurple,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: darkPurple.withOpacity(0.10)),
+      ),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: darkPurple,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.lock_clock_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text(
+                  'مدة التسجيل',
+                  style: TextStyle(
+                    color: blackColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'يفتح التسجيل من $start ويغلق تلقائياً في $end',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: Colors.black54,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -282,7 +356,7 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
           ),
           SizedBox(height: 8),
           Text(
-            'يرجى إدخال بيانات الدورة ليتم إعلانها للموظفين',
+            'حددي بيانات الدورة، المحاضرين، المقاعد، ومدة التسجيل',
             textAlign: TextAlign.right,
             style: TextStyle(color: Colors.white70, fontSize: 15),
           ),
@@ -313,10 +387,30 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
           icon: Icons.title_rounded,
         ),
         _buildTextField(
-          label: 'اسم المحاضر',
+          label: 'المحاضرون',
           controller: _trainerController,
-          hint: 'ادخل اسم المحاضر',
-          icon: Icons.person_rounded,
+          hint: 'مثال: أحمد علي، سارة محمد',
+          icon: Icons.groups_rounded,
+        ),
+        _buildTextField(
+          label: 'عدد المقاعد',
+          controller: _capacityController,
+          hint: 'مثال: 30',
+          icon: Icons.event_seat_rounded,
+          keyboardType: TextInputType.number,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'عدد المقاعد مطلوب';
+            }
+
+            final number = int.tryParse(value.trim());
+
+            if (number == null || number <= 0) {
+              return 'يرجى إدخال رقم صحيح';
+            }
+
+            return null;
+          },
         ),
         _buildDateField(),
         _buildTextField(
@@ -429,6 +523,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
                       ),
                       child: Column(
                         children: [
+                          _buildRegistrationInfoCard(),
+                          const SizedBox(height: 22),
                           _buildResponsiveFields(constraints.maxWidth),
                           const SizedBox(height: 20),
                           _buildDescriptionField(),

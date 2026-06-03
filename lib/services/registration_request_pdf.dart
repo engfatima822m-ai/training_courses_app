@@ -2,12 +2,15 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:arabic_reshaper/arabic_reshaper.dart';
-import 'package:bidi/bidi.dart' as bidi;
 import 'package:training_courses_app/models/course.dart';
 import 'package:training_courses_app/models/user.dart';
 
 class RegistrationRequestPdfService {
+  static const PdfColor blackColor = PdfColor.fromInt(0xFF111111);
+  static const PdfColor darkPurple = PdfColor.fromInt(0xFF2D033B);
+  static const PdfColor deepPurple = PdfColor.fromInt(0xFF4B0082);
+  static const PdfColor lightPurple = PdfColor.fromInt(0xFFF6F2FA);
+
   static String _formatDate(DateTime? date) {
     if (date == null) return 'غير محدد';
 
@@ -17,11 +20,7 @@ class RegistrationRequestPdfService {
 
     return '$year/$month/$day';
   }
-static String _ar(String text) {
-  final reshaped = ArabicReshaper().reshape(text);
-  return String.fromCharCodes(bidi.logicalToVisual(reshaped));
-}
- 
+
   static Future<Uint8List> generate({
     required User user,
     required Course course,
@@ -42,163 +41,215 @@ static String _ar(String text) {
 
     pdf.addPage(
       pw.MultiPage(
-        pageTheme: pw.PageTheme(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(28),
-          theme: pw.ThemeData.withFont(
-            base: regularFont,
-            bold: boldFont,
-          ),
+        textDirection: pw.TextDirection.rtl,
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(28),
+        theme: pw.ThemeData.withFont(
+          base: regularFont,
+          bold: boldFont,
         ),
-        build: (context) => [
-          pw.Directionality(
-            textDirection: pw.TextDirection.rtl,
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-              children: [
-                pw.Center(
-                  child: pw.Text(
-                    _ar('قسم الموارد البشرية / شعبة التدريب والتطوير'),
+        build: (context) {
+          return [
+            pw.Directionality(
+              textDirection: pw.TextDirection.rtl,
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(boldFont),
+                  pw.SizedBox(height: 26),
+                  pw.Text(
+                    'إلى / قسم الموارد البشرية - شعبة التدريب والتطوير',
+                    textAlign: pw.TextAlign.right,
                     style: pw.TextStyle(
                       font: boldFont,
-                      fontSize: 16,
+                      fontSize: 14,
+                      color: darkPurple,
                     ),
                   ),
-                ),
-                pw.SizedBox(height: 20),
-                pw.Center(
-                  child: pw.Text(
-                    _ar('طلب تثبيت تسجيل في دورة تدريبية'),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'تحية طيبة...',
+                    textAlign: pw.TextAlign.right,
                     style: pw.TextStyle(
-                      font: boldFont,
-                      fontSize: 18,
+                      font: regularFont,
+                      fontSize: 13,
                     ),
                   ),
-                ),
-                pw.SizedBox(height: 30),
-                pw.Text(
-                  _ar('إلى / قسم الموارد البشرية - شعبة التدريب والتطوير'),
-                  style: pw.TextStyle(
-                    font: boldFont,
-                    fontSize: 14,
-                  ),
-                  textAlign: pw.TextAlign.right,
-                ),
-                pw.SizedBox(height: 12),
-                pw.Text(
-                  _ar('تحية طيبة...'),
-                  style: pw.TextStyle(
-                    font: regularFont,
-                    fontSize: 13,
-                  ),
-                  textAlign: pw.TextAlign.right,
-                ),
-                pw.SizedBox(height: 16),
-                pw.Text(
-                  _ar(
-                    'أقدم لكم طلبي هذا لغرض إعلامكم بأنه تم تسجيلي إلكترونيًا في برنامج الدورات التدريبية على الدورة الموسومة (${course.title})، والتي ستقام بتاريخ ($courseDate) في (${course.location})، وبإشراف المحاضر (${course.instructor})، وفي الساعة (${course.time})، ولمدة (${course.duration.isEmpty ? 'غير محددة' : course.duration}).',
-                  ),
-                  textAlign: pw.TextAlign.justify,
-                  style: pw.TextStyle(
-                    font: regularFont,
-                    fontSize: 13,
-                    lineSpacing: 4,
-                  ),
-                ),
-                pw.SizedBox(height: 14),
-                pw.Text(
-                  _ar(
-                    'راجيًا من شعبتكم الموقرة الاطلاع على طلبي واتخاذ ما يلزم بشأن دراسة الطلب والموافقة عليه حسب الضوابط المعتمدة، علمًا أن التسجيل قد تم ضمن النظام الإلكتروني الخاص بالدورات، وأنا بانتظار تأييدكم وقبول الطلب من جهتكم.',
-                  ),
-                  textAlign: pw.TextAlign.justify,
-                  style: pw.TextStyle(
-                    font: regularFont,
-                    fontSize: 13,
-                    lineSpacing: 4,
-                  ),
-                ),
-                pw.SizedBox(height: 24),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(12),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey600),
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Column(
-                    children: [
-                      _infoRow(_ar('اسم الموظف'), _ar(user.fullName), boldFont, regularFont),
-                      _divider(),
-                      _infoRow(_ar('الرقم الوظيفي / رقم البصمة'), _ar(user.employeeId), boldFont, regularFont),
-                      _divider(),
-                      _infoRow(_ar('الدرجة الوظيفية'), _ar(user.grade.toString()), boldFont, regularFont),
-                      _divider(),
-                      _infoRow(
-                        _ar('مكان العمل'),
-                        _ar(user.workPlace.isEmpty ? 'غير متوفر' : user.workPlace),
-                        boldFont,
-                        regularFont,
-                      ),
-                      _divider(),
-                      _infoRow(_ar('تاريخ الاستحقاق القادم'), _ar(nextDueDate), boldFont, regularFont),
-                      _divider(),
-                      _infoRow(_ar('اسم الدورة'), _ar(course.title), boldFont, regularFont),
-                      _divider(),
-                      _infoRow(_ar('تاريخ الدورة'), _ar(courseDate), boldFont, regularFont),
-                      _divider(),
-                      _infoRow(_ar('وقت الدورة'), _ar(course.time), boldFont, regularFont),
-                      _divider(),
-                      _infoRow(_ar('مكان الدورة'), _ar(course.location), boldFont, regularFont),
-                    ],
-                  ),
-                ),
-                pw.SizedBox(height: 28),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text(
-                      _ar('التاريخ: $today'),
-                      style: pw.TextStyle(
-                        font: regularFont,
-                        fontSize: 13,
-                      ),
+                  pw.SizedBox(height: 16),
+                  pw.Text(
+                    'أقدم لكم طلبي هذا لغرض إعلامكم بأنه تم تسجيلي إلكترونياً في برنامج الدورات التدريبية على الدورة الموسومة (${course.title})، والتي ستقام بتاريخ ($courseDate) في (${course.location})، وبإشراف المحاضر (${course.instructorsText})، وفي الساعة (${course.time})، ولمدة (${course.duration.isEmpty ? 'غير محددة' : course.duration}).',
+                    textAlign: pw.TextAlign.justify,
+                    style: pw.TextStyle(
+                      font: regularFont,
+                      fontSize: 13,
+                      height: 1.8,
                     ),
-                    pw.Column(
-                      children: [
-                        pw.Text(
-                          _ar('اسم الموظف'),
-                          style: pw.TextStyle(
-                            font: boldFont,
-                            fontSize: 13,
-                          ),
-                        ),
-                        pw.SizedBox(height: 14),
-                        pw.Text(
-                          _ar(user.fullName),
-                          style: pw.TextStyle(
-                            font: regularFont,
-                            fontSize: 13,
-                          ),
-                        ),
-                        pw.SizedBox(height: 20),
-                        pw.Text(
-                          _ar('التوقيع: ____________'),
-                          style: pw.TextStyle(
-                            font: regularFont,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                  ),
+                  pw.SizedBox(height: 12),
+                  pw.Text(
+                    'راجياً من شعبتكم الموقرة الاطلاع على طلبي واتخاذ ما يلزم بشأن دراسة الطلب والموافقة عليه حسب الضوابط المعتمدة، علماً أن التسجيل قد تم ضمن النظام الإلكتروني الخاص بالدورات التدريبية.',
+                    textAlign: pw.TextAlign.justify,
+                    style: pw.TextStyle(
+                      font: regularFont,
+                      fontSize: 13,
+                      height: 1.8,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  pw.SizedBox(height: 24),
+                  _buildInfoBox(
+                    boldFont: boldFont,
+                    regularFont: regularFont,
+                    user: user,
+                    course: course,
+                    courseDate: courseDate,
+                    nextDueDate: nextDueDate,
+                  ),
+                  pw.SizedBox(height: 30),
+                  _buildFooter(
+                    boldFont: boldFont,
+                    regularFont: regularFont,
+                    user: user,
+                    today: today,
+                  ),
+                ],
+              ),
+            ),
+          ];
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  static pw.Widget _buildHeader(pw.Font boldFont) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.all(16),
+      decoration: pw.BoxDecoration(
+        color: darkPurple,
+        borderRadius: pw.BorderRadius.circular(12),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Text(
+            'شركة توزيع المنتجات النفطية / فرع البصرة',
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(
+              font: boldFont,
+              color: PdfColors.white,
+              fontSize: 16,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'قسم الموارد البشرية / شعبة التدريب والتطوير',
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(
+              font: boldFont,
+              color: PdfColors.white,
+              fontSize: 14,
+            ),
+          ),
+          pw.SizedBox(height: 14),
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 8,
+            ),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.white,
+              borderRadius: pw.BorderRadius.circular(20),
+            ),
+            child: pw.Text(
+              'طلب تثبيت تسجيل في دورة تدريبية',
+              textAlign: pw.TextAlign.center,
+              style: pw.TextStyle(
+                font: boldFont,
+                color: darkPurple,
+                fontSize: 17,
+              ),
             ),
           ),
         ],
       ),
     );
+  }
 
-    return pdf.save();
+  static pw.Widget _buildInfoBox({
+    required pw.Font boldFont,
+    required pw.Font regularFont,
+    required User user,
+    required Course course,
+    required String courseDate,
+    required String nextDueDate,
+  }) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(14),
+      decoration: pw.BoxDecoration(
+        color: lightPurple,
+        border: pw.Border.all(
+          color: const PdfColor.fromInt(0xFFD8C7E8),
+          width: 1,
+        ),
+        borderRadius: pw.BorderRadius.circular(10),
+      ),
+      child: pw.Column(
+        children: [
+          _infoRow('اسم الموظف', user.fullName, boldFont, regularFont),
+          _divider(),
+          _infoRow(
+            'الرقم الوظيفي / رقم البصمة',
+            user.employeeId,
+            boldFont,
+            regularFont,
+          ),
+          _divider(),
+          _infoRow(
+            'الدرجة الوظيفية',
+            user.grade.toString(),
+            boldFont,
+            regularFont,
+          ),
+          _divider(),
+          _infoRow(
+            'مكان العمل',
+            user.workPlace.isEmpty ? 'غير متوفر' : user.workPlace,
+            boldFont,
+            regularFont,
+          ),
+          _divider(),
+          _infoRow(
+            'تاريخ الاستحقاق القادم',
+            nextDueDate,
+            boldFont,
+            regularFont,
+          ),
+          _divider(),
+          _infoRow('اسم الدورة', course.title, boldFont, regularFont),
+          _divider(),
+          _infoRow('تاريخ الدورة', courseDate, boldFont, regularFont),
+          _divider(),
+          _infoRow('وقت الدورة', course.time, boldFont, regularFont),
+          _divider(),
+          _infoRow(
+            'مدة الدورة',
+            course.duration.isEmpty ? 'غير محددة' : course.duration,
+            boldFont,
+            regularFont,
+          ),
+          _divider(),
+          _infoRow('مكان الدورة', course.location, boldFont, regularFont),
+          _divider(),
+          _infoRow(
+            'المحاضر',
+            course.instructorsText,
+            boldFont,
+            regularFont,
+          ),
+        ],
+      ),
+    );
   }
 
   static pw.Widget _infoRow(
@@ -207,42 +258,100 @@ static String _ar(String text) {
     pw.Font boldFont,
     pw.Font regularFont,
   ) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 6),
-      child: pw.Row(
-        children: [
-          pw.Expanded(
-            child: pw.Text(
-              value,
-              textAlign: pw.TextAlign.right,
-              style: pw.TextStyle(
-                font: regularFont,
-                fontSize: 12,
+    return pw.Directionality(
+      textDirection: pw.TextDirection.rtl,
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(vertical: 7),
+        child: pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.SizedBox(
+              width: 150,
+              child: pw.Text(
+                '$label:',
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(
+                  font: boldFont,
+                  fontSize: 12.5,
+                  color: darkPurple,
+                ),
               ),
             ),
-          ),
-          pw.SizedBox(width: 12),
-          pw.SizedBox(
-            width: 150,
-            child: pw.Text(
-              '$label:',
-              textAlign: pw.TextAlign.right,
-              style: pw.TextStyle(
-                font: boldFont,
-                fontSize: 12,
+            pw.SizedBox(width: 10),
+            pw.Expanded(
+              child: pw.Text(
+                value.trim().isEmpty ? 'غير محدد' : value,
+                textAlign: pw.TextAlign.right,
+                style: pw.TextStyle(
+                  font: regularFont,
+                  fontSize: 12.5,
+                  color: blackColor,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   static pw.Widget _divider() {
     return pw.Container(
-      margin: const pw.EdgeInsets.symmetric(vertical: 2),
-      height: 1,
-      color: PdfColors.grey300,
+      height: 0.7,
+      color: const PdfColor.fromInt(0xFFE3D8EC),
+    );
+  }
+
+  static pw.Widget _buildFooter({
+    required pw.Font boldFont,
+    required pw.Font regularFont,
+    required User user,
+    required String today,
+  }) {
+    return pw.Directionality(
+      textDirection: pw.TextDirection.rtl,
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'مقدم الطلب',
+                style: pw.TextStyle(
+                  font: boldFont,
+                  fontSize: 13,
+                  color: darkPurple,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+              pw.Text(
+                user.fullName,
+                style: pw.TextStyle(
+                  font: regularFont,
+                  fontSize: 13,
+                ),
+              ),
+              pw.SizedBox(height: 18),
+              pw.Text(
+                'التوقيع: ________________',
+                style: pw.TextStyle(
+                  font: regularFont,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          pw.Text(
+            'التاريخ: $today',
+            style: pw.TextStyle(
+              font: regularFont,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

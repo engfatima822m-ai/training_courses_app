@@ -21,6 +21,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   static const Color blackColor = Color(0xFF111111);
   static const Color darkPurple = Color(0xFF2D033B);
   static const Color deepPurple = Color(0xFF4B0082);
+  static const Color lightBackground = Color(0xFFF6F2FA);
 
   String _formatDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
@@ -29,9 +30,35 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     return '$year/$month/$day';
   }
 
-  bool get _isGuestUser => widget.user.employeeId == 'GUEST';
+  bool get _alreadyRegistered {
+    return widget.course.registeredUsers.contains(widget.user.employeeId) &&
+        widget.user.employeeId != 'GUEST';
+  }
 
-  Future<void> _showConfirmationDialog(BuildContext context) async {
+  bool get _canRegister {
+    return !_alreadyRegistered &&
+        widget.course.isRegistrationOpen &&
+        !widget.course.isFull &&
+        !widget.course.isRegistrationExpired;
+  }
+
+  String get _disabledRegisterMessage {
+    if (_alreadyRegistered) {
+      return '✔ أنت مسجل في هذه الدورة';
+    }
+
+    if (widget.course.isFull) {
+      return 'اكتمل عدد المقاعد لهذه الدورة';
+    }
+
+    if (widget.course.isRegistrationExpired) {
+      return 'انتهت مدة التسجيل لهذه الدورة';
+    }
+
+    return 'التسجيل غير متاح حالياً';
+  }
+
+  Future<void> _showConfirmationDialog() async {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => Directionality(
@@ -48,11 +75,12 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          content: const Text(
-            'هل أنت متأكد من التسجيل في هذه الدورة؟\n\n'
-            'بعد إتمام التسجيل بنجاح، ستظهر لك صيغة طلب جاهزة بصيغة PDF يمكنك طباعتها أو مشاركتها.',
+          content: Text(
+            'هل تريد التسجيل في دورة:\n\n'
+            '${widget.course.title}\n\n'
+            'بعد الضغط على نعم سيتم نقلك إلى صفحة إدخال معلومات الموظف.',
             textAlign: TextAlign.right,
-            style: TextStyle(height: 1.5),
+            style: const TextStyle(height: 1.6),
           ),
           actions: [
             TextButton(
@@ -65,14 +93,14 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 backgroundColor: darkPurple,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('نعم'),
+              child: const Text('نعم، متابعة'),
             ),
           ],
         ),
       ),
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed == true && mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -85,15 +113,28 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     }
   }
 
+  Color _statusColor() {
+    if (widget.course.isFull) return Colors.red;
+    if (widget.course.isRegistrationExpired) return Colors.grey.shade700;
+    if (widget.course.isEndingSoon) return Colors.orange.shade800;
+    if (widget.course.isRegistrationOpen) return Colors.green.shade700;
+    return deepPurple;
+  }
+
+  IconData _statusIcon() {
+    if (widget.course.isFull) return Icons.event_busy_rounded;
+    if (widget.course.isRegistrationExpired) return Icons.lock_clock_rounded;
+    if (widget.course.isEndingSoon) return Icons.warning_amber_rounded;
+    if (widget.course.isRegistrationOpen) return Icons.check_circle_rounded;
+    return Icons.info_rounded;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool alreadyRegistered =
-        widget.course.registeredUsers.contains(widget.user.employeeId);
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF6F2FA),
+        backgroundColor: lightBackground,
         appBar: AppBar(
           backgroundColor: blackColor,
           foregroundColor: Colors.white,
@@ -115,10 +156,12 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
+                    _buildStatusCard(),
+                    const SizedBox(height: 14),
                     DetailItem(
                       icon: Icons.person_rounded,
                       title: 'المحاضر',
-                      value: widget.course.instructor,
+                      value: widget.course.instructorsText,
                     ),
                     DetailItem(
                       icon: Icons.calendar_month_rounded,
@@ -143,14 +186,30 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       value: widget.course.location,
                     ),
                     DetailItem(
+                      icon: Icons.badge_rounded,
+                      title: 'الدرجة المستهدفة',
+                      value: widget.course.grade,
+                    ),
+                    DetailItem(
+                      icon: Icons.event_seat_rounded,
+                      title: 'عدد المقاعد',
+                      value: '${widget.course.capacity}',
+                    ),
+                    DetailItem(
                       icon: Icons.groups_rounded,
                       title: 'عدد المسجلين',
                       value: '${widget.course.registeredCount} موظف',
                     ),
+                    DetailItem(
+                      icon: Icons.chair_alt_rounded,
+                      title: 'المقاعد المتبقية',
+                      value:
+                          '${widget.course.remainingSeats < 0 ? 0 : widget.course.remainingSeats}',
+                    ),
                     const SizedBox(height: 8),
                     _buildDescriptionCard(),
                     const SizedBox(height: 26),
-                    _buildActionButton(alreadyRegistered),
+                    _buildActionButton(),
                   ],
                 ),
               ),
@@ -204,11 +263,43 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'الاطلاع على تفاصيل الدورة التدريبية',
+            'الاطلاع على تفاصيل الدورة التدريبية والتسجيل بها',
             textAlign: TextAlign.right,
             style: TextStyle(
               color: Colors.white.withOpacity(0.72),
               fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusCard() {
+    final color = _statusColor();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.09),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Icon(_statusIcon(), color: color, size: 26),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              widget.course.registrationStatusText,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -266,72 +357,50 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     );
   }
 
-  Widget _buildActionButton(bool alreadyRegistered) {
-    if (_isGuestUser) {
-      return Container(
+  Widget _buildActionButton() {
+    if (_canRegister) {
+      return SizedBox(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: darkPurple.withOpacity(0.12),
-          ),
-        ),
-        child: const Text(
-          'هذه الصفحة مخصصة لعرض تفاصيل الدورة فقط. سيتم إضافة آلية طلب التسجيل لاحقاً من خلال شعبة التدريب.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: darkPurple,
-            fontWeight: FontWeight.w600,
-            height: 1.6,
+        height: 58,
+        child: ElevatedButton.icon(
+          onPressed: _showConfirmationDialog,
+          icon: const Icon(Icons.how_to_reg_rounded),
+          label: const Text('التسجيل في هذه الدورة'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: darkPurple,
+            foregroundColor: Colors.white,
+            elevation: 5,
+            shadowColor: Colors.black26,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       );
     }
 
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      height: 55,
-      child: alreadyRegistered
-          ? Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.green.shade400,
-                    Colors.green.shade700,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Text(
-                '✔ أنت مسجل في هذه الدورة',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            )
-          : ElevatedButton.icon(
-              onPressed: () => _showConfirmationDialog(context),
-              icon: const Icon(Icons.how_to_reg_rounded),
-              label: const Text('التسجيل في الدورة'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: darkPurple,
-                foregroundColor: Colors.white,
-                elevation: 5,
-                shadowColor: Colors.black26,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+      height: 58,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color:
+            _alreadyRegistered ? Colors.green.shade600 : Colors.grey.shade600,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        _disabledRegisterMessage,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }

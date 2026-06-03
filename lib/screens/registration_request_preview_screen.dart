@@ -31,6 +31,10 @@ class RegistrationRequestPreviewScreen extends StatelessWidget {
         canDebug: false,
         allowPrinting: true,
         allowSharing: true,
+        actionBarTheme: const PdfActionBarTheme(
+  backgroundColor: Color(0xFF2D033B),
+  iconColor: Colors.white,
+),
       ),
     );
   }
