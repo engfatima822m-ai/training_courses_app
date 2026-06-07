@@ -24,7 +24,6 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
   static const Color blackColor = Color(0xFF111111);
   static const Color darkPurple = Color(0xFF2D033B);
   static const Color deepPurple = Color(0xFF4B0082);
-  static const Color softPurple = Color(0xFF7B2CBF);
   static const Color lightBackground = Color(0xFFF6F2FA);
 
   final _formKey = GlobalKey<FormState>();
@@ -76,17 +75,21 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
   Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final employeeUser = _buildEmployeeUser();
 
     try {
       final bool success = await ApiService.registerToCourse(
         employeeId: employeeUser.employeeId,
+        employeeName: employeeUser.fullName,
+        grade: employeeUser.grade.toString(),
+        workPlace: employeeUser.workPlace,
+        phone: _phoneController.text.trim(),
         courseId: widget.course.id,
       );
+
+      if (!mounted) return;
 
       setState(() {
         _isLoading = false;
@@ -94,7 +97,7 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
         _registeredUser = employeeUser;
       });
 
-      if (!success && mounted) {
+      if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -106,9 +109,9 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
         );
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -281,8 +284,8 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
                     decoration: _inputDecoration(
                       label: 'رقم الهاتف',
                       icon: Icons.phone_rounded,
-                      hint: 'اختياري',
                     ),
+                    validator: _requiredValidator,
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -334,20 +337,9 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
         gradient: const LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [
-            blackColor,
-            darkPurple,
-            deepPurple,
-          ],
+          colors: [blackColor, darkPurple, deepPurple],
         ),
         borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.22),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -387,7 +379,6 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.13),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.16)),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -425,27 +416,13 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(26),
               border: Border.all(color: Colors.green.withOpacity(0.25)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
             ),
             child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.check_circle_rounded,
-                    size: 88,
-                    color: Colors.green.shade700,
-                  ),
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 88,
+                  color: Colors.green.shade700,
                 ),
                 const SizedBox(height: 22),
                 const Text(

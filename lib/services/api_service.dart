@@ -75,6 +75,10 @@ class ApiService {
   /// ==============================
   static Future<bool> registerToCourse({
     required String employeeId,
+    required String employeeName,
+    required String grade,
+    required String workPlace,
+    required String phone,
     required String courseId,
   }) async {
     final url = Uri.parse('$baseUrl/register_course.php');
@@ -83,6 +87,10 @@ class ApiService {
       url,
       body: {
         'employee_id': employeeId,
+        'employee_name': employeeName,
+        'grade': grade,
+        'work_place': workPlace,
+        'phone': phone,
         'course_id': courseId,
       },
     );
@@ -93,6 +101,31 @@ class ApiService {
       return data['success'] == true;
     } else {
       throw Exception('فشل في الاتصال بالسيرفر');
+    }
+  }
+
+  /// ==============================
+  /// 👥 جلب المسجلين في دورة محددة
+  /// ==============================
+  static Future<List<Map<String, dynamic>>> fetchCourseRegistrants({
+    required String courseId,
+  }) async {
+    final url = Uri.parse(
+      '$baseUrl/get_course_registrants.php?course_id=$courseId',
+    );
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      if (data['success'] == true && data['data'] is List) {
+        return List<Map<String, dynamic>>.from(data['data']);
+      }
+
+      return [];
+    } else {
+      throw Exception('فشل في جلب بيانات المسجلين');
     }
   }
 }

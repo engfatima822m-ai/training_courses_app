@@ -21,6 +21,9 @@ class Course {
   /// عدد المقاعد المسموح بها
   final int capacity;
 
+  /// عدد المسجلين القادم من قاعدة البيانات
+  final int registeredCountFromApi;
+
   /// تاريخ بداية التسجيل
   final DateTime registrationStartDate;
 
@@ -41,6 +44,7 @@ class Course {
     required this.grade,
     required this.location,
     this.capacity = 30,
+    this.registeredCountFromApi = 0,
     DateTime? registrationStartDate,
     DateTime? registrationEndDate,
     List<String>? registeredUsers,
@@ -68,6 +72,8 @@ class Course {
       grade: json['grade'] ?? '',
       location: json['location'] ?? '',
       capacity: int.tryParse(json['capacity']?.toString() ?? '') ?? 30,
+      registeredCountFromApi:
+          int.tryParse(json['registered_count']?.toString() ?? '') ?? 0,
       registrationStartDate:
           DateTime.tryParse(json['registration_start_date'] ?? '') ??
               DateTime.now(),
@@ -81,7 +87,10 @@ class Course {
   /// تحويل المحاضرين من JSON إلى List
   static List<String> _parseInstructors(dynamic value, String fallback) {
     if (value is List) {
-      return value.map((e) => e.toString()).where((e) => e.trim().isNotEmpty).toList();
+      return value
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
     }
 
     if (value is String && value.trim().isNotEmpty) {
@@ -106,10 +115,19 @@ class Course {
   }
 
   /// عدد المسجلين في الدورة
-  int get registeredCount => registeredUsers.length;
+  int get registeredCount {
+    if (registeredUsers.isNotEmpty) {
+      return registeredUsers.length;
+    }
+
+    return registeredCountFromApi;
+  }
 
   /// المقاعد المتبقية
-  int get remainingSeats => capacity - registeredCount;
+  int get remainingSeats {
+    final remaining = capacity - registeredCount;
+    return remaining < 0 ? 0 : remaining;
+  }
 
   /// هل العدد اكتمل؟
   bool get isFull => registeredCount >= capacity;
@@ -191,6 +209,7 @@ class Course {
     String? grade,
     String? location,
     int? capacity,
+    int? registeredCountFromApi,
     DateTime? registrationStartDate,
     DateTime? registrationEndDate,
     List<String>? registeredUsers,
@@ -207,6 +226,8 @@ class Course {
       grade: grade ?? this.grade,
       location: location ?? this.location,
       capacity: capacity ?? this.capacity,
+      registeredCountFromApi:
+          registeredCountFromApi ?? this.registeredCountFromApi,
       registrationStartDate:
           registrationStartDate ?? this.registrationStartDate,
       registrationEndDate: registrationEndDate ?? this.registrationEndDate,

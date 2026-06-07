@@ -18,10 +18,18 @@ class RegistrationRequestPreviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('طلب التسجيل'),
-        centerTitle: true,
-      ),
+     appBar: AppBar(
+  title: const Text(
+    'طلب التسجيل',
+    style: TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.bold,
+    ),
+  ),
+  centerTitle: true,
+  backgroundColor: Color(0xFF2D033B),
+  foregroundColor: Colors.white,
+),
       body: PdfPreview(
         build: (format) => RegistrationRequestPdfService.generate(
           user: user,

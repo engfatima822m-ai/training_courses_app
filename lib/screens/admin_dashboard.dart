@@ -59,74 +59,195 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  void _showRegistrants(Course course) {
+  Future<void> _showRegistrants(Course course) async {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return Directionality(
+        return const Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
-            ),
-            title: const Text(
-              'مراقبة المسجلين',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: darkPurple,
-                fontWeight: FontWeight.bold,
+            content: SizedBox(
+              height: 90,
+              child: Center(
+                child: CircularProgressIndicator(color: darkPurple),
               ),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  course.title,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                _dialogInfo('المحاضر', course.instructor),
-                _dialogInfo('الموقع', course.location),
-                _dialogInfo('عدد المسجلين حالياً', '${course.registeredCount}'),
-                const SizedBox(height: 12),
-                const Text(
-                  'ملاحظة: حالياً يتم عرض العدد فقط، وبعد ربط جدول التسجيلات نعرض أسماء المسجلين هنا.',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.black54,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إغلاق'),
-              ),
-            ],
           ),
         );
       },
     );
+
+    try {
+      final registrants = await ApiService.fetchCourseRegistrants(
+        courseId: course.id,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
+              title: Text(
+                'المسجلون في ${course.title}',
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: darkPurple,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: SizedBox(
+                width: 720,
+                child: registrants.isEmpty
+                    ? const Text(
+                        'لا يوجد مسجلون حالياً في هذه الدورة',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _registrantsSummary(course, registrants.length),
+                            const SizedBox(height: 14),
+                            ...registrants.map(
+                              (person) => _registrantCard(person),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('إغلاق'),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      Navigator.pop(context);
+
+      _showMessage('فشل في جلب بيانات المسجلين');
+    }
   }
 
-  Widget _dialogInfo(String label, String value) {
+  Widget _registrantsSummary(Course course, int count) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: darkPurple.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: darkPurple.withOpacity(0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            course.title,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: darkPurple,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'عدد المسجلين: $count من ${course.capacity} | المتبقي: ${course.remainingSeats}',
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _registrantCard(Map<String, dynamic> person) {
+    final name = person['employee_name']?.toString() ?? '';
+    final employeeId = person['employee_id']?.toString() ?? '';
+    final grade = person['grade']?.toString() ?? '';
+    final workPlace = person['work_place']?.toString() ?? '';
+    final phone = person['phone']?.toString() ?? '';
+    final date = person['registration_date']?.toString() ?? '';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: darkPurple.withOpacity(0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            name.isEmpty ? 'اسم غير متوفر' : name,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: darkPurple,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _registrantInfo('الرقم الوظيفي / البصمة', employeeId),
+          _registrantInfo('الدرجة الوظيفية', grade),
+          _registrantInfo('مكان العمل / القسم', workPlace),
+          _registrantInfo('رقم الهاتف', phone),
+          _registrantInfo('تاريخ التسجيل', date),
+        ],
+      ),
+    );
+  }
+
+  Widget _registrantInfo(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Text(
-          '$label: ${value.isEmpty ? 'غير محدد' : value}',
-          textAlign: TextAlign.right,
-          style: const TextStyle(fontSize: 14),
-        ),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? 'غير محدد' : value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -332,7 +453,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 _sectionTitle('صلاحيات شعبة التدريب', Icons.verified_user),
                 _buildActions(),
                 _sectionTitle('إدارة الدورات المعلنة', Icons.menu_book_rounded),
-
                 if (courses.isEmpty)
                   Container(
                     padding: const EdgeInsets.all(24),
@@ -473,8 +593,91 @@ class AdminCourseItem extends StatelessWidget {
     );
   }
 
+  Widget _statusChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: course.isRegistrationOpen
+            ? Colors.green.withOpacity(0.12)
+            : Colors.red.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: course.isRegistrationOpen ? Colors.green : Colors.red,
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        textDirection: TextDirection.rtl,
+        children: [
+          Icon(
+            course.isRegistrationOpen
+                ? Icons.check_circle_rounded
+                : Icons.cancel_rounded,
+            size: 16,
+            color: course.isRegistrationOpen ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            course.registrationStatusText,
+            style: TextStyle(
+              color: course.isRegistrationOpen ? Colors.green : Colors.red,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _seatInfoBox({
+    required String title,
+    required String value,
+    required IconData icon,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: darkPurple.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: darkPurple.withOpacity(0.08)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: deepPurple, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: const TextStyle(
+                color: darkPurple,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final progress = course.capacity == 0
+        ? 0.0
+        : (course.registeredCount / course.capacity).clamp(0.0, 1.0);
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -494,14 +697,23 @@ class AdminCourseItem extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(
-            course.title,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: darkPurple,
-            ),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: Text(
+                  course.title,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: darkPurple,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _statusChip(),
+            ],
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -510,12 +722,46 @@ class AdminCourseItem extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _chip(Icons.person_rounded, course.instructor),
+              _chip(Icons.person_rounded, course.instructorsText),
               _chip(Icons.location_on_rounded, course.location),
               _chip(Icons.calendar_month_rounded, _formatDate(course.date)),
               _chip(Icons.access_time_rounded, course.time),
-              _chip(Icons.people_rounded, 'المسجلين: ${course.registeredCount}'),
             ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              _seatInfoBox(
+                title: 'المقاعد',
+                value: '${course.capacity}',
+                icon: Icons.event_seat_rounded,
+              ),
+              const SizedBox(width: 10),
+              _seatInfoBox(
+                title: 'المسجلين',
+                value: '${course.registeredCount}',
+                icon: Icons.groups_rounded,
+              ),
+              const SizedBox(width: 10),
+              _seatInfoBox(
+                title: 'المتبقي',
+                value: '${course.remainingSeats}',
+                icon: Icons.how_to_reg_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: darkPurple.withOpacity(0.08),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                course.isFull ? Colors.red : deepPurple,
+              ),
+            ),
           ),
           const SizedBox(height: 14),
           Row(
