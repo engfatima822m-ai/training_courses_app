@@ -1,16 +1,76 @@
-# training_courses_app
+# Training Courses App
 
-A new Flutter project.
+نظام إدارة الدورات التدريبية
 
-## Getting Started
+خاص بشركة توزيع المنتجات النفطية / فرع البصرة
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## التقنيات المستخدمة
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- Flutter
+- PHP API
+- MySQL
+- GitHub
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## المميزات المنجزة
+
+- عرض الدورات
+- إضافة دورة
+- صفحة الموظفين
+- صفحة المحاضر
+- صفحة شعبة التدريب
+- دعم أكثر من محاضر
+- تحديد عدد المقاعد
+- فترة تسجيل محددة
+- إنشاء PDF لطلب التسجيل
+
+---
+
+## المميزات قيد التنفيذ
+
+- الانسحاب من الدورة
+- شاشة المسجلين
+- تعديل الدورات
+- حذف الدورات
+- حالات الدورة (مفتوحة / مغلقة / ممتلئة)
+
+---
+
+## قاعدة البيانات
+
+### courses12
+
+- id
+- title
+- instructors
+- date
+- time
+- duration
+- description
+- grade
+- location
+- capacity
+- registration_start_date
+- registration_end_date
+
+### registrations
+
+- id
+- employee_id
+- course_id
+- created_at
+
+---
+
+## مستودع GitHub
+
+https://github.com/engfatima822m-ai/training_courses_app
+
+---
+
+آخر تحديث
+
+يونيو 2026
