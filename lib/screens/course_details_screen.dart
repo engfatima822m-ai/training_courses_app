@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:training_courses_app/models/course.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/screens/course_registration_screen.dart';
+import 'package:training_courses_app/services/api_service.dart';
 
 class CourseDetailsScreen extends StatefulWidget {
   final Course course;
@@ -23,6 +24,16 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   static const Color deepPurple = Color(0xFF4B0082);
   static const Color lightBackground = Color(0xFFF6F2FA);
 
+  bool _isCheckingRegistration = false;
+  bool _isWithdrawing = false;
+  bool _isRegisteredFromApi = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkRegistrationStatus();
+  }
+
   String _formatDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
@@ -30,32 +41,50 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     return '$year/$month/$day';
   }
 
-  bool get _alreadyRegistered {
-    return widget.course.registeredUsers.contains(widget.user.employeeId) &&
+  bool get _hasRealEmployeeId {
+    return widget.user.employeeId.trim().isNotEmpty &&
         widget.user.employeeId != 'GUEST';
   }
 
+  bool get _alreadyRegistered {
+    return _isRegisteredFromApi;
+  }
+
   bool get _canRegister {
-    return !_alreadyRegistered &&
-        widget.course.isRegistrationOpen &&
-        !widget.course.isFull &&
-        !widget.course.isRegistrationExpired;
+    return !_alreadyRegistered && widget.course.isRegistrationOpen;
   }
 
   String get _disabledRegisterMessage {
-    if (_alreadyRegistered) {
-      return '✔ أنت مسجل في هذه الدورة';
-    }
-
-    if (widget.course.isFull) {
-      return 'اكتمل عدد المقاعد لهذه الدورة';
-    }
-
+    if (_alreadyRegistered) return '✔ أنت مسجل في هذه الدورة';
+    if (widget.course.isFull) return 'اكتمل عدد المقاعد لهذه الدورة';
     if (widget.course.isRegistrationExpired) {
       return 'انتهت مدة التسجيل لهذه الدورة';
     }
-
+    if (widget.course.isRegistrationNotStarted) return 'التسجيل لم يبدأ بعد';
     return 'التسجيل غير متاح حالياً';
+  }
+
+  Future<void> _checkRegistrationStatus() async {
+    if (!_hasRealEmployeeId) return;
+
+    setState(() => _isCheckingRegistration = true);
+
+    try {
+      final result = await ApiService.checkRegistration(
+        employeeId: widget.user.employeeId,
+        courseId: widget.course.id,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isRegisteredFromApi = result['is_registered'] == true;
+        _isCheckingRegistration = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isCheckingRegistration = false);
+    }
   }
 
   Future<void> _showConfirmationDialog() async {
@@ -101,7 +130,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     );
 
     if (confirmed == true && mounted) {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CourseRegistrationScreen(
@@ -110,7 +139,105 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
           ),
         ),
       );
+
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
     }
+  }
+
+  Future<void> _showWithdrawDialog() async {
+    if (!_hasRealEmployeeId) {
+      _showMessage('لا يمكن الانسحاب لأن بيانات الموظف غير معروفة', true);
+      return;
+    }
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: const Text(
+            'تأكيد الانسحاب',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'هل تريد الانسحاب من دورة:\n\n${widget.course.title}؟',
+            textAlign: TextAlign.right,
+            style: const TextStyle(height: 1.6),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('نعم، انسحاب'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true) {
+      await _withdrawFromCourse();
+    }
+  }
+
+  Future<void> _withdrawFromCourse() async {
+    setState(() => _isWithdrawing = true);
+
+    try {
+      final result = await ApiService.withdrawFromCourse(
+        employeeId: widget.user.employeeId,
+        courseId: widget.course.id,
+      );
+
+      final success = result['success'] == true;
+      final message =
+          result['message']?.toString() ?? 'تعذر إكمال عملية الانسحاب';
+
+      if (!mounted) return;
+
+      setState(() {
+        _isWithdrawing = false;
+        if (success) {
+          _isRegisteredFromApi = false;
+        }
+      });
+
+      _showMessage(message, !success);
+
+      if (success && mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isWithdrawing = false);
+      _showMessage('حدث خطأ أثناء الانسحاب: $e', true);
+    }
+  }
+
+  void _showMessage(String text, bool isError) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(text, textAlign: TextAlign.right),
+        backgroundColor: isError ? Colors.red : Colors.green,
+      ),
+    );
   }
 
   Color _statusColor() {
@@ -169,6 +296,16 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       value: _formatDate(widget.course.date),
                     ),
                     DetailItem(
+                      icon: Icons.play_circle_rounded,
+                      title: 'بداية التسجيل',
+                      value: _formatDate(widget.course.registrationStartDate),
+                    ),
+                    DetailItem(
+                      icon: Icons.stop_circle_rounded,
+                      title: 'نهاية التسجيل',
+                      value: _formatDate(widget.course.registrationEndDate),
+                    ),
+                    DetailItem(
                       icon: Icons.access_time_rounded,
                       title: 'الوقت',
                       value: widget.course.time,
@@ -203,8 +340,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                     DetailItem(
                       icon: Icons.chair_alt_rounded,
                       title: 'المقاعد المتبقية',
-                      value:
-                          '${widget.course.remainingSeats < 0 ? 0 : widget.course.remainingSeats}',
+                      value: '${widget.course.remainingSeats}',
                     ),
                     const SizedBox(height: 8),
                     _buildDescriptionCard(),
@@ -228,11 +364,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [
-            blackColor,
-            darkPurple,
-            blackColor,
-          ],
+          colors: [blackColor, darkPurple, blackColor],
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(32),
@@ -358,6 +490,49 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   }
 
   Widget _buildActionButton() {
+    if (_isCheckingRegistration) {
+      return const SizedBox(
+        height: 58,
+        child: Center(
+          child: CircularProgressIndicator(color: deepPurple),
+        ),
+      );
+    }
+
+    if (_alreadyRegistered) {
+      return SizedBox(
+        width: double.infinity,
+        height: 58,
+        child: ElevatedButton.icon(
+          onPressed: _isWithdrawing ? null : _showWithdrawDialog,
+          icon: _isWithdrawing
+              ? const SizedBox(
+                  width: 21,
+                  height: 21,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.4,
+                  ),
+                )
+              : const Icon(Icons.logout_rounded),
+          label: Text(_isWithdrawing ? 'جاري الانسحاب...' : 'الانسحاب من الدورة'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red.shade700,
+            foregroundColor: Colors.white,
+            elevation: 4,
+            shadowColor: Colors.black26,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_canRegister) {
       return SizedBox(
         width: double.infinity,
@@ -388,8 +563,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       height: 58,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color:
-            _alreadyRegistered ? Colors.green.shade600 : Colors.grey.shade600,
+        color: Colors.grey.shade600,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Text(

@@ -72,7 +72,7 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
     );
   }
 
-  Future<void> _handleRegistration() async {
+    Future<void> _handleRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -80,7 +80,7 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
     final employeeUser = _buildEmployeeUser();
 
     try {
-      final bool success = await ApiService.registerToCourse(
+      final result = await ApiService.registerToCourse(
         employeeId: employeeUser.employeeId,
         employeeName: employeeUser.fullName,
         grade: employeeUser.grade.toString(),
@@ -89,19 +89,23 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
         courseId: widget.course.id,
       );
 
+      final bool success = result['success'] == true;
+      final String message =
+          result['message']?.toString() ?? 'تعذر إكمال عملية التسجيل';
+
       if (!mounted) return;
 
       setState(() {
         _isLoading = false;
         _isRegistered = success;
-        _registeredUser = employeeUser;
+        _registeredUser = success ? employeeUser : null;
       });
 
       if (!success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'تعذر التسجيل أو أن الموظف مسجل مسبقاً في هذه الدورة',
+              message,
               textAlign: TextAlign.right,
             ),
             backgroundColor: Colors.red,
@@ -124,7 +128,6 @@ class _CourseRegistrationScreenState extends State<CourseRegistrationScreen> {
       );
     }
   }
-
   void _openRequestPdf() {
     final userForPdf = _registeredUser ?? _buildEmployeeUser();
 

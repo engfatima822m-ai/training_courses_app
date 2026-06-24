@@ -25,14 +25,28 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
   final TextEditingController _searchController = TextEditingController();
 
+  late Future<List<Course>> _coursesFuture;
+
   String _searchText = '';
   String _selectedGrade = 'الكل';
   String _selectedMonth = 'الكل';
 
   @override
+  void initState() {
+    super.initState();
+    _coursesFuture = ApiService.fetchCourses();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshCourses() async {
+    setState(() {
+      _coursesFuture = ApiService.fetchCourses();
+    });
   }
 
   List<String> _uniqueItems(List<String> items) {
@@ -733,8 +747,8 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                     width: double.infinity,
                     height: 47,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
+                      onPressed: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => CourseDetailsScreen(
@@ -743,6 +757,10 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                             ),
                           ),
                         );
+
+                        if (mounted) {
+                          _refreshCourses();
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: darkPurple,
@@ -839,6 +857,16 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                   style: const TextStyle(
                     color: Colors.black87,
                     fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                ElevatedButton.icon(
+                  onPressed: _refreshCourses,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('إعادة المحاولة'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: darkPurple,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ],
@@ -962,9 +990,16 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),
           ),
+          actions: [
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: _refreshCourses,
+            ),
+          ],
         ),
         body: FutureBuilder<List<Course>>(
-          future: ApiService.fetchCourses(),
+          future: _coursesFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return _buildLoadingView();
@@ -976,7 +1011,6 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
             final allCourses = (snapshot.data ?? []).where((course) {
               return course.title.trim().isNotEmpty &&
-                  course.instructorsText.trim().isNotEmpty &&
                   course.date.year > 2000;
             }).toList();
 
@@ -997,31 +1031,35 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
             final filteredCourses = _filterCourses(allCourses);
 
-            return ListView.builder(
-              padding: const EdgeInsets.only(bottom: 18),
-              itemCount:
-                  filteredCourses.isEmpty ? 4 : filteredCourses.length + 3,
-              itemBuilder: (context, index) {
-                if (index == 0) return _buildHeader();
+            return RefreshIndicator(
+              color: deepPurple,
+              onRefresh: _refreshCourses,
+              child: ListView.builder(
+                padding: const EdgeInsets.only(bottom: 18),
+                itemCount:
+                    filteredCourses.isEmpty ? 4 : filteredCourses.length + 3,
+                itemBuilder: (context, index) {
+                  if (index == 0) return _buildHeader();
 
-                if (index == 1) {
-                  return _buildSearchAndFilters(
-                    months: months,
-                    grades: grades,
-                  );
-                }
+                  if (index == 1) {
+                    return _buildSearchAndFilters(
+                      months: months,
+                      grades: grades,
+                    );
+                  }
 
-                if (index == 2) {
-                  return _buildSectionTitle(filteredCourses.length);
-                }
+                  if (index == 2) {
+                    return _buildSectionTitle(filteredCourses.length);
+                  }
 
-                if (filteredCourses.isEmpty) {
-                  return _buildNoFilteredResultsView();
-                }
+                  if (filteredCourses.isEmpty) {
+                    return _buildNoFilteredResultsView();
+                  }
 
-                final course = filteredCourses[index - 3];
-                return _buildCourseCard(context, course);
-              },
+                  final course = filteredCourses[index - 3];
+                  return _buildCourseCard(context, course);
+                },
+              ),
             );
           },
         ),

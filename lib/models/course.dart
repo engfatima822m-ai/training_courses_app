@@ -132,32 +132,50 @@ class Course {
   /// هل العدد اكتمل؟
   bool get isFull => registeredCount >= capacity;
 
+  /// تاريخ اليوم بدون ساعة
+  DateTime get _todayOnly {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  /// تاريخ بداية التسجيل بدون ساعة
+  DateTime get _startDateOnly {
+    return DateTime(
+      registrationStartDate.year,
+      registrationStartDate.month,
+      registrationStartDate.day,
+    );
+  }
+
+  /// تاريخ نهاية التسجيل بدون ساعة
+  DateTime get _endDateOnly {
+    return DateTime(
+      registrationEndDate.year,
+      registrationEndDate.month,
+      registrationEndDate.day,
+    );
+  }
+
   /// هل فترة التسجيل انتهت؟
   bool get isRegistrationExpired {
-    final now = DateTime.now();
-    return now.isAfter(registrationEndDate);
+    return _todayOnly.isAfter(_endDateOnly);
   }
 
   /// هل التسجيل لم يبدأ بعد؟
   bool get isRegistrationNotStarted {
-    final now = DateTime.now();
-    return now.isBefore(registrationStartDate);
+    return _todayOnly.isBefore(_startDateOnly);
   }
 
   /// هل التسجيل مفتوح؟
   bool get isRegistrationOpen {
-    final now = DateTime.now();
-
-    return now.isAfter(registrationStartDate) &&
-        now.isBefore(registrationEndDate) &&
+    return !_todayOnly.isBefore(_startDateOnly) &&
+        !_todayOnly.isAfter(_endDateOnly) &&
         !isFull;
   }
 
   /// هل التسجيل ينتهي قريباً؟ آخر يومين
   bool get isEndingSoon {
-    final now = DateTime.now();
-    final difference = registrationEndDate.difference(now).inDays;
-
+    final difference = _endDateOnly.difference(_todayOnly).inDays;
     return isRegistrationOpen && difference <= 2;
   }
 

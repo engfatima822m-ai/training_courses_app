@@ -33,6 +33,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _coursesFuture = ApiService.fetchCourses();
   }
 
+  void _refreshCourses() {
+    setState(_loadCourses);
+  }
+
   Future<void> _openAddCourseScreen() async {
     final result = await Navigator.push(
       context,
@@ -41,14 +45,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
 
-    if (result == true) {
-      setState(_loadCourses);
+    if (result == true && mounted) {
+      _refreshCourses();
       _showMessage('تم تحديث قائمة الدورات بنجاح');
     }
   }
 
-  void _openCourseDetails(Course course) {
-    Navigator.push(
+  Future<void> _openCourseDetails(Course course) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CourseDetailsScreen(
@@ -57,6 +61,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
       ),
     );
+
+    if (mounted) {
+      _refreshCourses();
+    }
   }
 
   Future<void> _showRegistrants(Course course) async {
@@ -130,7 +138,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _refreshCourses();
+                  },
                   child: const Text('إغلاق'),
                 ),
               ],
@@ -142,7 +153,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
       if (!mounted) return;
 
       Navigator.pop(context);
-
       _showMessage('فشل في جلب بيانات المسجلين');
     }
   }
@@ -189,7 +199,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final grade = person['grade']?.toString() ?? '';
     final workPlace = person['work_place']?.toString() ?? '';
     final phone = person['phone']?.toString() ?? '';
-    final date = person['registration_date']?.toString() ?? '';
+    final date = person['registration_date']?.toString() ??
+        person['created_at']?.toString() ??
+        '';
 
     return Container(
       width: double.infinity,
@@ -272,6 +284,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final totalRegistrations =
         courses.fold<int>(0, (sum, c) => sum + c.registeredCount);
 
+    final openCourses = courses.where((c) => c.isRegistrationOpen).length;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(26),
@@ -334,6 +348,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   icon: Icons.groups_rounded,
                   title: 'المسجلين',
                   value: '$totalRegistrations',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  icon: Icons.check_circle_rounded,
+                  title: 'المفتوحة',
+                  value: '$openCourses',
                 ),
               ),
             ],
@@ -407,9 +429,58 @@ class _AdminDashboardState extends State<AdminDashboard> {
         _actionButton(
           text: 'تحديث',
           icon: Icons.refresh_rounded,
-          onTap: () => setState(_loadCourses),
+          onTap: _refreshCourses,
         ),
       ],
+    );
+  }
+
+  Widget _buildErrorView(Object? error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.red.withOpacity(0.20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded,
+                  color: Colors.red, size: 44),
+              const SizedBox(height: 12),
+              const Text(
+                'تعذر تحميل بيانات لوحة الإدارة',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$error',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              ElevatedButton.icon(
+                onPressed: _refreshCourses,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('إعادة المحاولة'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: darkPurple,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -430,6 +501,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           actions: [
             IconButton(
+              tooltip: 'تسجيل الخروج',
               icon: const Icon(Icons.logout_rounded),
               onPressed: _logout,
             ),
@@ -444,40 +516,51 @@ class _AdminDashboardState extends State<AdminDashboard> {
               );
             }
 
+            if (snapshot.hasError) {
+              return _buildErrorView(snapshot.error);
+            }
+
             final courses = snapshot.data ?? [];
 
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildHeader(courses),
-                _sectionTitle('صلاحيات شعبة التدريب', Icons.verified_user),
-                _buildActions(),
-                _sectionTitle('إدارة الدورات المعلنة', Icons.menu_book_rounded),
-                if (courses.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: const Text(
-                      'لا توجد دورات مضافة حالياً',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: darkPurple,
-                        fontWeight: FontWeight.bold,
+            return RefreshIndicator(
+              color: deepPurple,
+              onRefresh: () async => _refreshCourses(),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _buildHeader(courses),
+                  _sectionTitle('صلاحيات شعبة التدريب', Icons.verified_user),
+                  _buildActions(),
+                  _sectionTitle(
+                    'إدارة الدورات المعلنة',
+                    Icons.menu_book_rounded,
+                  ),
+                  if (courses.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: const Text(
+                        'لا توجد دورات مضافة حالياً',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: darkPurple,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    )
+                  else
+                    ...courses.map(
+                      (course) => AdminCourseItem(
+                        course: course,
+                        onDetails: () => _openCourseDetails(course),
+                        onViewRegistrants: () => _showRegistrants(course),
                       ),
                     ),
-                  )
-                else
-                  ...courses.map(
-                    (course) => AdminCourseItem(
-                      course: course,
-                      onDetails: () => _openCourseDetails(course),
-                      onViewRegistrants: () => _showRegistrants(course),
-                    ),
-                  ),
-              ],
+                ],
+              ),
             );
           },
         ),
@@ -567,6 +650,22 @@ class AdminCourseItem extends StatelessWidget {
     return '$year/$month/$day';
   }
 
+  Color _statusColor() {
+    if (course.isFull) return Colors.red;
+    if (course.isRegistrationExpired) return Colors.grey.shade700;
+    if (course.isEndingSoon) return Colors.orange.shade800;
+    if (course.isRegistrationOpen) return Colors.green.shade700;
+    return deepPurple;
+  }
+
+  IconData _statusIcon() {
+    if (course.isFull) return Icons.event_busy_rounded;
+    if (course.isRegistrationExpired) return Icons.lock_clock_rounded;
+    if (course.isEndingSoon) return Icons.warning_amber_rounded;
+    if (course.isRegistrationOpen) return Icons.check_circle_rounded;
+    return Icons.info_rounded;
+  }
+
   Widget _chip(IconData icon, String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -580,12 +679,15 @@ class AdminCourseItem extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: deepPurple),
           const SizedBox(width: 5),
-          Text(
-            text.isEmpty ? 'غير محدد' : text,
-            style: const TextStyle(
-              color: darkPurple,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              text.isEmpty ? 'غير محدد' : text,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: darkPurple,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -594,15 +696,15 @@ class AdminCourseItem extends StatelessWidget {
   }
 
   Widget _statusChip() {
+    final color = _statusColor();
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: course.isRegistrationOpen
-            ? Colors.green.withOpacity(0.12)
-            : Colors.red.withOpacity(0.10),
+        color: color.withOpacity(0.10),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: course.isRegistrationOpen ? Colors.green : Colors.red,
+          color: color.withOpacity(0.55),
           width: 0.8,
         ),
       ),
@@ -611,17 +713,15 @@ class AdminCourseItem extends StatelessWidget {
         textDirection: TextDirection.rtl,
         children: [
           Icon(
-            course.isRegistrationOpen
-                ? Icons.check_circle_rounded
-                : Icons.cancel_rounded,
+            _statusIcon(),
             size: 16,
-            color: course.isRegistrationOpen ? Colors.green : Colors.red,
+            color: color,
           ),
           const SizedBox(width: 5),
           Text(
             course.registrationStatusText,
             style: TextStyle(
-              color: course.isRegistrationOpen ? Colors.green : Colors.red,
+              color: color,
               fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
@@ -726,6 +826,14 @@ class AdminCourseItem extends StatelessWidget {
               _chip(Icons.location_on_rounded, course.location),
               _chip(Icons.calendar_month_rounded, _formatDate(course.date)),
               _chip(Icons.access_time_rounded, course.time),
+              _chip(
+                Icons.play_circle_rounded,
+                'التسجيل: ${_formatDate(course.registrationStartDate)}',
+              ),
+              _chip(
+                Icons.stop_circle_rounded,
+                'النهاية: ${_formatDate(course.registrationEndDate)}',
+              ),
             ],
           ),
           const SizedBox(height: 14),
