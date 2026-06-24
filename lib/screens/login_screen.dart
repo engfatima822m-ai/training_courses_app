@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/screens/admin_dashboard.dart';
 import 'package:training_courses_app/screens/courses_list_screen.dart';
@@ -16,13 +18,14 @@ class _LoginScreenState extends State<LoginScreen> {
   static const String trainingUsername = 'admin';
   static const String trainingPassword = 'admin123';
 
-  static const String instructorUsername = 'instructor';
-  static const String instructorPassword = 'trainer123';
-
   final Color blackColor = const Color(0xFF111111);
   final Color darkPurple = const Color(0xFF2D033B);
   final Color deepPurple = const Color(0xFF4B0082);
   final Color softPurple = const Color(0xFF7B2CBF);
+
+  String get instructorLoginUrl {
+    return 'http://localhost/training_api/instructor_login.php';
+  }
 
   User _buildGuestUser() {
     return User(
@@ -48,16 +51,50 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  User _buildInstructorUser() {
+  User _buildInstructorUser({
+    required String name,
+    required String id,
+  }) {
     return User(
-      fullName: 'المحاضر',
-      employeeId: 'INSTRUCTOR',
+      fullName: name,
+      employeeId: id,
       grade: 0,
       role: 'instructor',
       isAdmin: false,
       workPlace: 'شركة توزيع المنتجات النفطية / فرع البصرة',
       nextDueDate: null,
     );
+  }
+
+  Future<User> _loginInstructorFromApi({
+    required String username,
+    required String password,
+  }) async {
+    final url = Uri.parse(instructorLoginUrl);
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode({
+        'username': username,
+        'password': password,
+      }),
+    );
+
+    final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+    if (data['success'] == true) {
+      final instructor = data['instructor'];
+
+      return _buildInstructorUser(
+        name: instructor['name'].toString(),
+        id: instructor['id'].toString(),
+      );
+    } else {
+      throw Exception(data['message'] ?? 'بيانات الدخول غير صحيحة');
+    }
   }
 
   void _goToSplash() {
@@ -80,9 +117,8 @@ class _LoginScreenState extends State<LoginScreen> {
     required String title,
     required String subtitle,
     required IconData icon,
-    required String correctUsername,
-    required String correctPassword,
-    required VoidCallback onSuccess,
+    required Future<User?> Function(String username, String password) loginAction,
+    required void Function(User? user) onSuccess,
   }) {
     Navigator.push(
       context,
@@ -91,8 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
           title: title,
           subtitle: subtitle,
           icon: icon,
-          correctUsername: correctUsername,
-          correctPassword: correctPassword,
+          loginAction: loginAction,
           onSuccess: onSuccess,
           blackColor: blackColor,
           darkPurple: darkPurple,
@@ -306,14 +341,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           title: 'دخول المحاضر',
                           subtitle: 'يرجى إدخال اسم المستخدم وكلمة المرور',
                           icon: Icons.person_pin_rounded,
-                          correctUsername: instructorUsername,
-                          correctPassword: instructorPassword,
-                          onSuccess: () {
+                          loginAction: (username, password) async {
+                            return await _loginInstructorFromApi(
+                              username: username,
+                              password: password,
+                            );
+                          },
+                          onSuccess: (user) {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => InstructorDashboard(
-                                  user: _buildInstructorUser(),
+                                  user: user!,
                                 ),
                               ),
                             );
@@ -333,14 +372,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           title: 'دخول شعبة التدريب',
                           subtitle: 'يرجى إدخال اسم المستخدم وكلمة المرور',
                           icon: Icons.admin_panel_settings_rounded,
-                          correctUsername: trainingUsername,
-                          correctPassword: trainingPassword,
-                          onSuccess: () {
+                          loginAction: (username, password) async {
+                            if (username == trainingUsername &&
+                                password == trainingPassword) {
+                              return _buildTrainingStaffUser();
+                            }
+                            throw Exception('اسم المستخدم أو كلمة المرور غير صحيحة');
+                          },
+                          onSuccess: (user) {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => AdminDashboard(
-                                  user: _buildTrainingStaffUser(),
+                                  user: user!,
                                 ),
                               ),
                             );
@@ -372,9 +416,8 @@ class _RoleLoginPage extends StatefulWidget {
   final String title;
   final String subtitle;
   final IconData icon;
-  final String correctUsername;
-  final String correctPassword;
-  final VoidCallback onSuccess;
+  final Future<User?> Function(String username, String password) loginAction;
+  final void Function(User? user) onSuccess;
 
   final Color blackColor;
   final Color darkPurple;
@@ -385,8 +428,7 @@ class _RoleLoginPage extends StatefulWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.correctUsername,
-    required this.correctPassword,
+    required this.loginAction,
     required this.onSuccess,
     required this.blackColor,
     required this.darkPurple,
@@ -403,6 +445,7 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _showPassword = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -411,15 +454,15 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (username != widget.correctUsername || password != widget.correctPassword) {
+    if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-            'اسم المستخدم أو كلمة المرور غير صحيحة',
+            'يرجى إدخال اسم المستخدم وكلمة المرور',
             textAlign: TextAlign.right,
           ),
           backgroundColor: Colors.red.shade700,
@@ -428,7 +471,36 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
       return;
     }
 
-    widget.onSuccess();
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = await widget.loginAction(username, password);
+
+      if (!mounted) return;
+      widget.onSuccess(user);
+    } catch (e) {
+      if (!mounted) return;
+
+      String message = e.toString().replaceFirst('Exception: ', '');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            textAlign: TextAlign.right,
+          ),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   InputDecoration _inputDecoration({
@@ -584,7 +656,7 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: _login,
+                          onPressed: _isLoading ? null : _login,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: widget.darkPurple,
@@ -597,15 +669,23 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
                               borderRadius: BorderRadius.circular(18),
                             ),
                           ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            textDirection: TextDirection.rtl,
-                            children: [
-                              Icon(Icons.login_rounded),
-                              SizedBox(width: 8),
-                              Text('تسجيل الدخول'),
-                            ],
-                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  textDirection: TextDirection.rtl,
+                                  children: [
+                                    Icon(Icons.login_rounded),
+                                    SizedBox(width: 8),
+                                    Text('تسجيل الدخول'),
+                                  ],
+                                ),
                         ),
                       ),
                       const SizedBox(height: 12),
