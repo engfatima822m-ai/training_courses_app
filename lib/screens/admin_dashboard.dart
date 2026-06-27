@@ -5,6 +5,7 @@ import 'package:training_courses_app/screens/add_course_screen_custom.dart';
 import 'package:training_courses_app/screens/course_details_screen.dart';
 import 'package:training_courses_app/screens/login_screen.dart';
 import 'package:training_courses_app/services/api_service.dart';
+import 'package:training_courses_app/screens/manage_instructors_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   final User user;
@@ -36,6 +37,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void _refreshCourses() {
     setState(_loadCourses);
   }
+  Future<void> _openManageInstructorsScreen() async {
+  await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const ManageInstructorsScreen(),
+    ),
+  );
+}
 
   Future<void> _openAddCourseScreen() async {
     final result = await Navigator.push(
@@ -415,25 +424,30 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
-
-  Widget _buildActions() {
-    return Row(
-      textDirection: TextDirection.rtl,
-      children: [
-        _actionButton(
-          text: 'إضافة دورة',
-          icon: Icons.add_rounded,
-          onTap: _openAddCourseScreen,
-        ),
-        const SizedBox(width: 12),
-        _actionButton(
-          text: 'تحديث',
-          icon: Icons.refresh_rounded,
-          onTap: _refreshCourses,
-        ),
-      ],
-    );
-  }
+Widget _buildActions() {
+  return Row(
+    textDirection: TextDirection.rtl,
+    children: [
+      _actionButton(
+        text: 'إضافة دورة',
+        icon: Icons.add_rounded,
+        onTap: _openAddCourseScreen,
+      ),
+      const SizedBox(width: 12),
+      _actionButton(
+        text: 'إدارة المحاضرين',
+        icon: Icons.groups_rounded,
+        onTap: _openManageInstructorsScreen,
+      ),
+      const SizedBox(width: 12),
+      _actionButton(
+        text: 'تحديث',
+        icon: Icons.refresh_rounded,
+        onTap: _refreshCourses,
+      ),
+    ],
+  );
+}
 
   Widget _buildErrorView(Object? error) {
     return Center(

@@ -1,8 +1,8 @@
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:training_courses_app/models/user.dart';
+import 'instructor_course_details_screen.dart';
 
 class InstructorCourse {
   final String id;
@@ -463,7 +463,7 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
     );
   }
 
-  static Widget _buildCourseCard({
+  Widget _buildCourseCard({
     required InstructorCourse course,
   }) {
     return Container(
@@ -521,7 +521,16 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
               height: 36,
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => InstructorCourseDetailsScreen(
+                        course: course,
+                      ),
+                    ),
+                  );
+                },
                 icon: const Icon(Icons.info_outline, size: 18),
                 label: const Text(
                   'عرض التفاصيل',

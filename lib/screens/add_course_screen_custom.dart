@@ -14,6 +14,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
 
   final _titleController = TextEditingController();
   final _trainerController = TextEditingController();
+  final _instructorUsernameController = TextEditingController();
+  final _instructorPasswordController = TextEditingController();
   final _timeController = TextEditingController();
   final _durationController = TextEditingController();
   final _locationController = TextEditingController();
@@ -35,6 +37,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
   void dispose() {
     _titleController.dispose();
     _trainerController.dispose();
+    _instructorUsernameController.dispose();
+    _instructorPasswordController.dispose();
     _timeController.dispose();
     _durationController.dispose();
     _locationController.dispose();
@@ -89,7 +93,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     }
 
     final registrationStartDate = DateTime.now();
-    final registrationEndDate = registrationStartDate.add(const Duration(days: 9));
+    final registrationEndDate =
+        registrationStartDate.add(const Duration(days: 9));
 
     setState(() => _isLoading = true);
 
@@ -98,28 +103,23 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
         Uri.parse(addCourseUrl),
         body: {
           'title': _titleController.text.trim(),
-
-          // أول محاضر يبقى للتوافق مع الكود القديم
           'instructor': _trainerController.text.trim(),
-
-          // المحاضرين المتعددين بصيغة نص مفصول بفارزة
           'instructors': _trainerController.text.trim(),
-
+          'instructor_username': _instructorUsernameController.text.trim(),
+          'instructor_password': _instructorPasswordController.text.trim(),
           'date': _formatDate(_selectedDate!),
           'time': _timeController.text.trim(),
           'duration': _durationController.text.trim(),
           'location': _locationController.text.trim(),
           'description': _descriptionController.text.trim(),
           'grade': _gradeController.text.trim(),
-
-          // الحقول الجديدة
           'capacity': _capacityController.text.trim(),
           'registration_start_date': _formatDate(registrationStartDate),
           'registration_end_date': _formatDate(registrationEndDate),
         },
       );
 
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
 
       if (!mounted) return;
 
@@ -127,7 +127,10 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
         _showMessage(data['message'] ?? 'تمت إضافة الدورة بنجاح', Colors.green);
         Navigator.pop(context, true);
       } else {
-        _showMessage(data['message'] ?? 'حدث خطأ أثناء إضافة الدورة', Colors.red);
+        _showMessage(
+          data['message'] ?? 'حدث خطأ أثناء إضافة الدورة',
+          Colors.red,
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -255,7 +258,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
                         : _formatDate(_selectedDate!),
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      color: _selectedDate == null ? Colors.black54 : blackColor,
+                      color:
+                          _selectedDate == null ? Colors.black54 : blackColor,
                       fontWeight: _selectedDate == null
                           ? FontWeight.normal
                           : FontWeight.bold,
@@ -359,6 +363,63 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
             'حددي بيانات الدورة، المحاضرين، المقاعد، ومدة التسجيل',
             textAlign: TextAlign.right,
             style: TextStyle(color: Colors.white70, fontSize: 15),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructorAccountCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBF8FE),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: darkPurple.withOpacity(0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Icon(Icons.manage_accounts_rounded, color: darkPurple),
+              SizedBox(width: 8),
+              Text(
+                'بيانات حساب المحاضر',
+                style: TextStyle(
+                  color: blackColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'إذا كان المحاضر جديداً اكتبي اسم المستخدم وكلمة المرور. إذا كان موجوداً سابقاً يمكن تركها فارغة.',
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: Colors.black54,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 18),
+          _buildTextField(
+            label: 'اسم مستخدم المحاضر',
+            controller: _instructorUsernameController,
+            hint: 'مثال: safa.adel',
+            icon: Icons.person_rounded,
+            validator: (_) => null,
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            label: 'كلمة مرور المحاضر',
+            controller: _instructorPasswordController,
+            hint: 'مثال: 123456',
+            icon: Icons.lock_rounded,
+            validator: (_) => null,
           ),
         ],
       ),
@@ -526,6 +587,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
                           _buildRegistrationInfoCard(),
                           const SizedBox(height: 22),
                           _buildResponsiveFields(constraints.maxWidth),
+                          const SizedBox(height: 20),
+                          _buildInstructorAccountCard(),
                           const SizedBox(height: 20),
                           _buildDescriptionField(),
                           const SizedBox(height: 26),
