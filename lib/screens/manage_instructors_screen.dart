@@ -20,11 +20,20 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
 
   bool isLoading = true;
   List instructors = [];
+  List filteredInstructors = [];
+
+  final TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     fetchInstructors();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchInstructors() async {
@@ -39,15 +48,40 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
 
       setState(() {
         instructors = data['success'] == true ? data['data'] ?? [] : [];
+        filteredInstructors = instructors;
         isLoading = false;
       });
     } catch (e) {
       setState(() {
         instructors = [];
+        filteredInstructors = [];
         isLoading = false;
       });
       _showMessage('فشل الاتصال بالسيرفر', Colors.red);
     }
+  }
+
+  void filterInstructors(String value) {
+    final query = value.trim().toLowerCase();
+
+    setState(() {
+      if (query.isEmpty) {
+        filteredInstructors = instructors;
+      } else {
+        filteredInstructors = instructors.where((item) {
+          final name = item['name']?.toString().toLowerCase() ?? '';
+          final phone = item['phone']?.toString().toLowerCase() ?? '';
+          final specialization =
+              item['specialization']?.toString().toLowerCase() ?? '';
+          final username = item['username']?.toString().toLowerCase() ?? '';
+
+          return name.contains(query) ||
+              phone.contains(query) ||
+              specialization.contains(query) ||
+              username.contains(query);
+        }).toList();
+      }
+    });
   }
 
   Future<void> addInstructor({
@@ -69,13 +103,15 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
     );
 
     final data = jsonDecode(utf8.decode(response.bodyBytes));
+
     _showMessage(
       data['message'] ?? 'تمت العملية',
       data['success'] == true ? Colors.green : Colors.red,
     );
 
     if (data['success'] == true) {
-      fetchInstructors();
+      searchController.clear();
+      await fetchInstructors();
     }
   }
 
@@ -100,13 +136,15 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
     );
 
     final data = jsonDecode(utf8.decode(response.bodyBytes));
+
     _showMessage(
       data['message'] ?? 'تمت العملية',
       data['success'] == true ? Colors.green : Colors.red,
     );
 
     if (data['success'] == true) {
-      fetchInstructors();
+      searchController.clear();
+      await fetchInstructors();
     }
   }
 
@@ -117,14 +155,48 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
     );
 
     final data = jsonDecode(utf8.decode(response.bodyBytes));
+
     _showMessage(
       data['message'] ?? 'تمت العملية',
       data['success'] == true ? Colors.green : Colors.red,
     );
 
     if (data['success'] == true) {
-      fetchInstructors();
+      searchController.clear();
+      await fetchInstructors();
     }
+  }
+
+  int _getCoursesCount(Map instructor) {
+    final value = instructor['courses_count'] ??
+        instructor['course_count'] ??
+        instructor['coursesCount'] ??
+        0;
+
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  List<String> _getCoursesNames(Map instructor) {
+    final value = instructor['courses_names'] ??
+        instructor['course_names'] ??
+        instructor['courses'] ??
+        instructor['courses_titles'];
+
+    if (value == null) return [];
+
+    if (value is List) {
+      return value
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+    }
+
+    return value
+        .toString()
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
   }
 
   void _showMessage(String message, Color color) {
@@ -301,57 +373,186 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
         ),
         borderRadius: BorderRadius.circular(26),
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.groups_rounded, color: Colors.white, size: 48),
-          SizedBox(height: 12),
-          Text(
-            'إدارة المحاضرين',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Icon(Icons.groups_rounded, color: Colors.white, size: 48),
+          ),
+          const SizedBox(height: 12),
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'إدارة المحاضرين',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          SizedBox(height: 6),
-          Text(
-            'إضافة وتعديل حسابات المحاضرين المرتبطين بالدورات',
-            textAlign: TextAlign.right,
-            style: TextStyle(color: Colors.white70),
+          const SizedBox(height: 6),
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'إضافة وتعديل حسابات المحاضرين ومتابعة الدورات المرتبطة بهم',
+              textAlign: TextAlign.right,
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              _statBox('عدد المحاضرين', instructors.length.toString()),
+              const SizedBox(width: 10),
+              _statBox('نتائج البحث', filteredInstructors.length.toString()),
+            ],
           ),
         ],
       ),
     );
   }
 
+  Widget _statBox(String title, String value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 21,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              title,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _searchBox() {
+    return TextField(
+      controller: searchController,
+      textAlign: TextAlign.right,
+      onChanged: filterInstructors,
+      decoration: InputDecoration(
+        hintText: 'ابحث باسم المحاضر أو الهاتف أو الاختصاص أو اسم المستخدم...',
+        prefixIcon: const Icon(Icons.search, color: deepPurple),
+        suffixIcon: searchController.text.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  searchController.clear();
+                  filterInstructors('');
+                },
+              ),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
   Widget _instructorCard(Map instructor) {
+    final coursesCount = _getCoursesCount(instructor);
+    final coursesNames = _getCoursesNames(instructor);
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 3,
+      margin: const EdgeInsets.only(bottom: 14),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              instructor['name']?.toString() ?? '',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: darkPurple,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              textDirection: TextDirection.rtl,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  backgroundColor: lightPurple,
+                  child: Text(
+                    (instructor['name']?.toString().isNotEmpty ?? false)
+                        ? instructor['name'].toString()[0]
+                        : 'م',
+                    style: const TextStyle(
+                      color: darkPurple,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        instructor['name']?.toString() ?? '',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: darkPurple,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: lightPurple,
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Text(
+                            '$coursesCount دورة',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              color: deepPurple,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const Divider(height: 24),
             _info('الهاتف', instructor['phone']),
             _info('الاختصاص', instructor['specialization']),
             _info('اسم المستخدم', instructor['username']),
             _info('كلمة المرور', instructor['password']),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            _coursesSection(coursesNames),
+            const SizedBox(height: 14),
             Row(
               textDirection: TextDirection.rtl,
               children: [
@@ -386,14 +587,71 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
     );
   }
 
+  Widget _coursesSection(List<String> coursesNames) {
+    if (coursesNames.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: lightPurple,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Text(
+          'لا توجد دورات مرتبطة بهذا المحاضر حالياً',
+          textAlign: TextAlign.right,
+          style: TextStyle(color: Colors.black54),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: lightPurple,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Wrap(
+        textDirection: TextDirection.rtl,
+        alignment: WrapAlignment.start,
+        spacing: 8,
+        runSpacing: 8,
+        children: coursesNames.map((course) {
+          return Chip(
+            label: Text(course),
+            backgroundColor: Colors.white,
+            labelStyle: const TextStyle(color: darkPurple),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _info(String label, dynamic value) {
     final text = value?.toString() ?? '';
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
-      child: Text(
-        '$label: ${text.isEmpty ? 'غير محدد' : text}',
-        textAlign: TextAlign.right,
-        style: const TextStyle(color: Colors.black54),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          '$label: ${text.isEmpty ? 'غير محدد' : text}',
+          textAlign: TextAlign.right,
+          style: const TextStyle(color: Colors.black54),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyBox(String text) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.black54),
+        ),
       ),
     );
   }
@@ -432,6 +690,8 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               _header(),
+              const SizedBox(height: 16),
+              _searchBox(),
               const SizedBox(height: 18),
               if (isLoading)
                 const Center(
@@ -441,17 +701,11 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
                   ),
                 )
               else if (instructors.isEmpty)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'لا يوجد محاضرون حالياً',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
+                _emptyBox('لا يوجد محاضرون حالياً')
+              else if (filteredInstructors.isEmpty)
+                _emptyBox('لا توجد نتائج مطابقة للبحث')
               else
-                ...instructors.map((item) => _instructorCard(item)),
+                ...filteredInstructors.map((item) => _instructorCard(item)),
             ],
           ),
         ),

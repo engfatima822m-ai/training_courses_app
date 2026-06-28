@@ -13,9 +13,6 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
   final _formKey = GlobalKey<FormState>();
 
   final _titleController = TextEditingController();
-  final _trainerController = TextEditingController();
-  final _instructorUsernameController = TextEditingController();
-  final _instructorPasswordController = TextEditingController();
   final _timeController = TextEditingController();
   final _durationController = TextEditingController();
   final _locationController = TextEditingController();
@@ -25,20 +22,28 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
 
   DateTime? _selectedDate;
   bool _isLoading = false;
+  bool _isLoadingInstructors = true;
+
+  List<Map<String, dynamic>> _instructors = [];
+  List<Map<String, dynamic>> _selectedInstructors = [];
 
   static const Color blackColor = Color(0xFF1A1A1A);
   static const Color darkPurple = Color(0xFF2D033B);
   static const Color lightPurple = Color(0xFFF2E8F8);
   static const Color fieldPurple = Color(0xFFF7F1FB);
 
+  final String baseUrl = 'http://localhost/training_api';
   final String addCourseUrl = 'http://localhost/training_api/add_course.php';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchInstructors();
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _trainerController.dispose();
-    _instructorUsernameController.dispose();
-    _instructorPasswordController.dispose();
     _timeController.dispose();
     _durationController.dispose();
     _locationController.dispose();
@@ -46,6 +51,36 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     _gradeController.dispose();
     _capacityController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchInstructors() async {
+    setState(() => _isLoadingInstructors = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/get_instructors.php'),
+      );
+
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+      if (!mounted) return;
+
+      setState(() {
+        _instructors = data['success'] == true
+            ? List<Map<String, dynamic>>.from(data['data'] ?? [])
+            : [];
+        _isLoadingInstructors = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _instructors = [];
+        _isLoadingInstructors = false;
+      });
+
+      _showMessage('فشل جلب المحاضرين من السيرفر', Colors.red);
+    }
   }
 
   Future<void> _pickDate() async {
@@ -84,8 +119,20 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     return '${date.year}-$month-$day';
   }
 
+  String _selectedInstructorNames() {
+    return _selectedInstructors
+        .map((item) => item['name']?.toString() ?? '')
+        .where((name) => name.trim().isNotEmpty)
+        .join(',');
+  }
+
   Future<void> _submitCourse() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedInstructors.isEmpty) {
+      _showMessage('يرجى اختيار محاضر واحد على الأقل', Colors.red);
+      return;
+    }
 
     if (_selectedDate == null) {
       _showMessage('يرجى اختيار تأريخ الدورة', Colors.red);
@@ -96,6 +143,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     final registrationEndDate =
         registrationStartDate.add(const Duration(days: 9));
 
+    final instructorsNames = _selectedInstructorNames();
+
     setState(() => _isLoading = true);
 
     try {
@@ -103,10 +152,10 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
         Uri.parse(addCourseUrl),
         body: {
           'title': _titleController.text.trim(),
-          'instructor': _trainerController.text.trim(),
-          'instructors': _trainerController.text.trim(),
-          'instructor_username': _instructorUsernameController.text.trim(),
-          'instructor_password': _instructorPasswordController.text.trim(),
+          'instructor': instructorsNames,
+          'instructors': instructorsNames,
+          'instructor_username': '',
+          'instructor_password': '',
           'date': _formatDate(_selectedDate!),
           'time': _timeController.text.trim(),
           'duration': _durationController.text.trim(),
@@ -274,6 +323,187 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     );
   }
 
+  Widget _buildInstructorsSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        const Text(
+          'المحاضرون',
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            color: blackColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _isLoadingInstructors ? null : _openInstructorsDialog,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+            decoration: BoxDecoration(
+              color: fieldPurple,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: darkPurple.withOpacity(0.15)),
+            ),
+            child: Row(
+              textDirection: TextDirection.rtl,
+              children: [
+                const Icon(Icons.groups_rounded, color: darkPurple),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _isLoadingInstructors
+                      ? const Text(
+                          'جاري تحميل المحاضرين...',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(color: Colors.black54),
+                        )
+                      : _selectedInstructors.isEmpty
+                          ? const Text(
+                              'اختاري المحاضرين من القائمة',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(color: Colors.black54),
+                            )
+                          : Wrap(
+                              textDirection: TextDirection.rtl,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _selectedInstructors.map((item) {
+                                return Chip(
+                                  label: Text(item['name']?.toString() ?? ''),
+                                  backgroundColor: Colors.white,
+                                  deleteIcon: const Icon(Icons.close, size: 18),
+                                  onDeleted: () {
+                                    setState(() {
+                                      _selectedInstructors.removeWhere(
+                                        (selected) =>
+                                            selected['id'].toString() ==
+                                            item['id'].toString(),
+                                      );
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                ),
+                const Icon(Icons.keyboard_arrow_down_rounded,
+                    color: darkPurple),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openInstructorsDialog() {
+    final tempSelected = List<Map<String, dynamic>>.from(_selectedInstructors);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                title: const Text(
+                  'اختيار المحاضرين',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: darkPurple,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: SizedBox(
+                  width: 460,
+                  child: _instructors.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text(
+                            'لا يوجد محاضرون حالياً. أضيفي المحاضرين أولاً من شاشة إدارة المحاضرين.',
+                            textAlign: TextAlign.right,
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _instructors.length,
+                          itemBuilder: (context, index) {
+                            final instructor = _instructors[index];
+                            final id = instructor['id'].toString();
+
+                            final isSelected = tempSelected.any(
+                              (item) => item['id'].toString() == id,
+                            );
+
+                            return CheckboxListTile(
+                              value: isSelected,
+                              activeColor: darkPurple,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text(
+                                instructor['name']?.toString() ?? '',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text(
+                                instructor['specialization']
+                                            ?.toString()
+                                            .trim()
+                                            .isNotEmpty ==
+                                        true
+                                    ? instructor['specialization'].toString()
+                                    : 'بدون اختصاص',
+                                textAlign: TextAlign.right,
+                              ),
+                              onChanged: (value) {
+                                setDialogState(() {
+                                  if (value == true) {
+                                    tempSelected.add(instructor);
+                                  } else {
+                                    tempSelected.removeWhere(
+                                      (item) => item['id'].toString() == id,
+                                    );
+                                  }
+                                });
+                              },
+                            );
+                          },
+                        ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('إلغاء'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: darkPurple,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _selectedInstructors = tempSelected;
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('اعتماد الاختيار'),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildRegistrationInfoCard() {
     final start = _formatDate(DateTime.now());
     final end = _formatDate(DateTime.now().add(const Duration(days: 9)));
@@ -369,63 +599,6 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     );
   }
 
-  Widget _buildInstructorAccountCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFBF8FE),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: darkPurple.withOpacity(0.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              Icon(Icons.manage_accounts_rounded, color: darkPurple),
-              SizedBox(width: 8),
-              Text(
-                'بيانات حساب المحاضر',
-                style: TextStyle(
-                  color: blackColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'إذا كان المحاضر جديداً اكتبي اسم المستخدم وكلمة المرور. إذا كان موجوداً سابقاً يمكن تركها فارغة.',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: Colors.black54,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 18),
-          _buildTextField(
-            label: 'اسم مستخدم المحاضر',
-            controller: _instructorUsernameController,
-            hint: 'مثال: safa.adel',
-            icon: Icons.person_rounded,
-            validator: (_) => null,
-          ),
-          const SizedBox(height: 16),
-          _buildTextField(
-            label: 'كلمة مرور المحاضر',
-            controller: _instructorPasswordController,
-            hint: 'مثال: 123456',
-            icon: Icons.lock_rounded,
-            validator: (_) => null,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildResponsiveFields(double width) {
     final crossAxisCount = width >= 1100
         ? 3
@@ -447,12 +620,7 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
           hint: 'ادخل عنوان الدورة',
           icon: Icons.title_rounded,
         ),
-        _buildTextField(
-          label: 'المحاضرون',
-          controller: _trainerController,
-          hint: 'مثال: أحمد علي، سارة محمد',
-          icon: Icons.groups_rounded,
-        ),
+        _buildInstructorsSelector(),
         _buildTextField(
           label: 'عدد المقاعد',
           controller: _capacityController,
@@ -587,8 +755,6 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
                           _buildRegistrationInfoCard(),
                           const SizedBox(height: 22),
                           _buildResponsiveFields(constraints.maxWidth),
-                          const SizedBox(height: 20),
-                          _buildInstructorAccountCard(),
                           const SizedBox(height: 20),
                           _buildDescriptionField(),
                           const SizedBox(height: 26),
