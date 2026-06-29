@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class AddCourseScreenCustom extends StatefulWidget {
-  const AddCourseScreenCustom({super.key});
+  final dynamic course;
+
+  const AddCourseScreenCustom({super.key, this.course});
 
   @override
   State<AddCourseScreenCustom> createState() => _AddCourseScreenCustomState();
@@ -34,10 +36,15 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
 
   final String baseUrl = 'http://localhost/training_api';
   final String addCourseUrl = 'http://localhost/training_api/add_course.php';
+  final String updateCourseUrl =
+      'http://localhost/training_api/update_course.php';
+
+  bool get isEditMode => widget.course != null;
 
   @override
   void initState() {
     super.initState();
+    _fillCourseData();
     _fetchInstructors();
   }
 
@@ -53,6 +60,85 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
     super.dispose();
   }
 
+  dynamic _getCourseValue(String key) {
+    final course = widget.course;
+    if (course == null) return null;
+
+    if (course is Map) {
+      return course[key];
+    }
+
+    try {
+      switch (key) {
+        case 'id':
+          return course.id;
+        case 'title':
+          return course.title;
+        case 'instructor':
+          return course.instructor;
+        case 'instructors':
+          return course.instructors;
+        case 'date':
+          return course.date;
+        case 'time':
+          return course.time;
+        case 'duration':
+          return course.duration;
+        case 'location':
+          return course.location;
+        case 'description':
+          return course.description;
+        case 'grade':
+          return course.grade;
+        case 'capacity':
+          return course.capacity;
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  void _fillCourseData() {
+    if (!isEditMode) return;
+
+    _titleController.text = _getCourseValue('title')?.toString() ?? '';
+    _timeController.text = _getCourseValue('time')?.toString() ?? '';
+    _durationController.text = _getCourseValue('duration')?.toString() ?? '';
+    _locationController.text = _getCourseValue('location')?.toString() ?? '';
+    _descriptionController.text =
+        _getCourseValue('description')?.toString() ?? '';
+    _gradeController.text = _getCourseValue('grade')?.toString() ?? '';
+    _capacityController.text = _getCourseValue('capacity')?.toString() ?? '30';
+
+    final dateText = _getCourseValue('date')?.toString() ?? '';
+    if (dateText.isNotEmpty) {
+      _selectedDate = DateTime.tryParse(dateText);
+    }
+  }
+
+  List<String> _oldInstructorNames() {
+    final instructorsValue = _getCourseValue('instructors');
+
+    if (instructorsValue is List) {
+      return instructorsValue
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    final instructorsText =
+        (_getCourseValue('instructors') ?? _getCourseValue('instructor') ?? '')
+            .toString();
+
+    return instructorsText
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
   Future<void> _fetchInstructors() async {
     setState(() => _isLoadingInstructors = true);
 
@@ -65,10 +151,22 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
 
       if (!mounted) return;
 
+      final loadedInstructors = data['success'] == true
+          ? List<Map<String, dynamic>>.from(data['data'] ?? [])
+          : <Map<String, dynamic>>[];
+
+      final oldNames = _oldInstructorNames();
+
       setState(() {
-        _instructors = data['success'] == true
-            ? List<Map<String, dynamic>>.from(data['data'] ?? [])
-            : [];
+        _instructors = loadedInstructors;
+
+        if (isEditMode && oldNames.isNotEmpty) {
+          _selectedInstructors = _instructors.where((instructor) {
+            final name = instructor['name']?.toString().trim() ?? '';
+            return oldNames.contains(name);
+          }).toList();
+        }
+
         _isLoadingInstructors = false;
       });
     } catch (e) {
@@ -86,8 +184,8 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
   Future<void> _pickDate() async {
     final pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
       lastDate: DateTime(DateTime.now().year + 2),
     );
 
@@ -139,33 +237,41 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
       return;
     }
 
-    final registrationStartDate = DateTime.now();
-    final registrationEndDate =
-        registrationStartDate.add(const Duration(days: 9));
-
     final instructorsNames = _selectedInstructorNames();
+
+    final body = {
+      if (isEditMode) 'id': _getCourseValue('id').toString(),
+      'title': _titleController.text.trim(),
+      'instructor': instructorsNames,
+      'instructors': instructorsNames,
+      'date': _formatDate(_selectedDate!),
+      'time': _timeController.text.trim(),
+      'duration': _durationController.text.trim(),
+      'location': _locationController.text.trim(),
+      'description': _descriptionController.text.trim(),
+      'grade': _gradeController.text.trim(),
+      'capacity': _capacityController.text.trim(),
+    };
+
+    if (!isEditMode) {
+      final registrationStartDate = DateTime.now();
+      final registrationEndDate =
+          registrationStartDate.add(const Duration(days: 9));
+
+      body.addAll({
+        'instructor_username': '',
+        'instructor_password': '',
+        'registration_start_date': _formatDate(registrationStartDate),
+        'registration_end_date': _formatDate(registrationEndDate),
+      });
+    }
 
     setState(() => _isLoading = true);
 
     try {
       final response = await http.post(
-        Uri.parse(addCourseUrl),
-        body: {
-          'title': _titleController.text.trim(),
-          'instructor': instructorsNames,
-          'instructors': instructorsNames,
-          'instructor_username': '',
-          'instructor_password': '',
-          'date': _formatDate(_selectedDate!),
-          'time': _timeController.text.trim(),
-          'duration': _durationController.text.trim(),
-          'location': _locationController.text.trim(),
-          'description': _descriptionController.text.trim(),
-          'grade': _gradeController.text.trim(),
-          'capacity': _capacityController.text.trim(),
-          'registration_start_date': _formatDate(registrationStartDate),
-          'registration_end_date': _formatDate(registrationEndDate),
-        },
+        Uri.parse(isEditMode ? updateCourseUrl : addCourseUrl),
+        body: body,
       );
 
       final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -173,11 +279,20 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
       if (!mounted) return;
 
       if (response.statusCode == 200 && data['success'] == true) {
-        _showMessage(data['message'] ?? 'تمت إضافة الدورة بنجاح', Colors.green);
+        _showMessage(
+          data['message'] ??
+              (isEditMode
+                  ? 'تم تعديل الدورة بنجاح'
+                  : 'تمت إضافة الدورة بنجاح'),
+          Colors.green,
+        );
         Navigator.pop(context, true);
       } else {
         _showMessage(
-          data['message'] ?? 'حدث خطأ أثناء إضافة الدورة',
+          data['message'] ??
+              (isEditMode
+                  ? 'حدث خطأ أثناء تعديل الدورة'
+                  : 'حدث خطأ أثناء إضافة الدورة'),
           Colors.red,
         );
       }
@@ -388,8 +503,10 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
                               }).toList(),
                             ),
                 ),
-                const Icon(Icons.keyboard_arrow_down_rounded,
-                    color: darkPurple),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: darkPurple,
+                ),
               ],
             ),
           ),
@@ -505,6 +622,45 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
   }
 
   Widget _buildRegistrationInfoCard() {
+    if (isEditMode) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: lightPurple,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: darkPurple.withOpacity(0.10)),
+        ),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: darkPurple,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.edit_calendar_rounded,
+                  color: Colors.white),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Text(
+                'وضع التعديل: يمكنك تعديل بيانات الدورة والمحاضرين المختارين.',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 14,
+                  height: 1.5,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final start = _formatDate(DateTime.now());
     final end = _formatDate(DateTime.now().add(const Duration(days: 9)));
 
@@ -574,25 +730,33 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
         ),
         borderRadius: BorderRadius.circular(28),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 48),
-          SizedBox(height: 14),
+          Icon(
+            isEditMode
+                ? Icons.edit_note_rounded
+                : Icons.add_circle_outline_rounded,
+            color: Colors.white,
+            size: 48,
+          ),
+          const SizedBox(height: 14),
           Text(
-            'إضافة دورة تدريبية جديدة',
+            isEditMode ? 'تعديل الدورة التدريبية' : 'إضافة دورة تدريبية جديدة',
             textAlign: TextAlign.right,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 27,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            'حددي بيانات الدورة، المحاضرين، المقاعد، ومدة التسجيل',
+            isEditMode
+                ? 'عدّلي بيانات الدورة والمحاضرين ثم احفظي التغييرات'
+                : 'حددي بيانات الدورة، المحاضرين، المقاعد، ومدة التسجيل',
             textAlign: TextAlign.right,
-            style: TextStyle(color: Colors.white70, fontSize: 15),
+            style: const TextStyle(color: Colors.white70, fontSize: 15),
           ),
         ],
       ),
@@ -683,6 +847,9 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
   }
 
   Widget _buildSubmitButton() {
+    final text = isEditMode ? 'حفظ التعديلات' : 'إضافة الدورة';
+    final loadingText = isEditMode ? 'جاري الحفظ...' : 'جاري الإضافة...';
+
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -698,7 +865,7 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
                 ),
               )
             : const Icon(Icons.save_rounded),
-        label: Text(_isLoading ? 'جاري الإضافة...' : 'إضافة الدورة'),
+        label: Text(_isLoading ? loadingText : text),
         style: ElevatedButton.styleFrom(
           backgroundColor: darkPurple,
           foregroundColor: Colors.white,
@@ -725,9 +892,9 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
           backgroundColor: blackColor,
           foregroundColor: Colors.white,
           centerTitle: true,
-          title: const Text(
-            'إضافة دورة جديدة',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          title: Text(
+            isEditMode ? 'تعديل الدورة' : 'إضافة دورة جديدة',
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
         body: LayoutBuilder(

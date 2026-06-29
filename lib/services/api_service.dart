@@ -195,4 +195,33 @@ class ApiService {
       'message': 'رد غير مفهوم من السيرفر',
     };
   }
+
+  static Future<Map<String, dynamic>> deleteCourse({
+    required String courseId,
+  }) async {
+    final url = Uri.parse('$baseUrl/delete_course.php');
+
+    final response = await http.post(
+      url,
+      body: {
+        'id': courseId,
+        'course_id': courseId,
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('فشل في الاتصال بالسيرفر');
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    return {
+      'success': false,
+      'message': 'رد غير مفهوم من السيرفر',
+    };
+  }
 }

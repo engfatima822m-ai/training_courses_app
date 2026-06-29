@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import 'package:training_courses_app/models/course.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/screens/add_course_screen_custom.dart';
 import 'package:training_courses_app/screens/course_details_screen.dart';
 import 'package:training_courses_app/screens/login_screen.dart';
-import 'package:training_courses_app/services/api_service.dart';
 import 'package:training_courses_app/screens/manage_instructors_screen.dart';
+import 'package:training_courses_app/services/api_service.dart';
+import 'package:training_courses_app/services/course_registrants_pdf.dart';
 
 class AdminDashboard extends StatefulWidget {
   final User user;
@@ -37,14 +39,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void _refreshCourses() {
     setState(_loadCourses);
   }
+
   Future<void> _openManageInstructorsScreen() async {
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const ManageInstructorsScreen(),
-    ),
-  );
-}
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ManageInstructorsScreen(),
+      ),
+    );
+
+    if (mounted) _refreshCourses();
+  }
 
   Future<void> _openAddCourseScreen() async {
     final result = await Navigator.push(
@@ -60,6 +65,87 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  Future<void> _openEditCourseScreen(Course course) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddCourseScreenCustom(course: course),
+      ),
+    );
+
+    if (result == true && mounted) {
+      _refreshCourses();
+      _showMessage('تم تعديل الدورة وتحديث القائمة بنجاح');
+    }
+  }
+
+  Future<void> _confirmDeleteCourse(Course course) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+            ),
+            title: const Text(
+              'تأكيد حذف الدورة',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: darkPurple,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(
+              'هل أنتِ متأكدة من حذف دورة:\n${course.title}؟',
+              textAlign: TextAlign.right,
+              style: const TextStyle(height: 1.6),
+            ),
+            actionsAlignment: MainAxisAlignment.start,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.delete_rounded),
+                label: const Text('حذف'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _deleteCourse(course);
+    }
+  }
+
+  Future<void> _deleteCourse(Course course) async {
+    try {
+      final result = await ApiService.deleteCourse(courseId: course.id);
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        _refreshCourses();
+        _showMessage(result['message'] ?? 'تم حذف الدورة بنجاح');
+      } else {
+        _showMessage(result['message'] ?? 'فشل حذف الدورة');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('فشل الاتصال بالسيرفر: $e');
+    }
+  }
+
   Future<void> _openCourseDetails(Course course) async {
     await Navigator.push(
       context,
@@ -71,8 +157,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
 
-    if (mounted) {
-      _refreshCourses();
+    if (mounted) _refreshCourses();
+  }
+
+  Future<void> _printRegistrantsPdf(
+    Course course,
+    List<Map<String, dynamic>> registrants,
+  ) async {
+    try {
+      await Printing.layoutPdf(
+        name: 'كشف المشاركين - ${course.title}',
+        onLayout: (_) async {
+          return CourseRegistrantsPdfService.generate(
+            course: course,
+            registrants: registrants,
+          );
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('تعذر إنشاء أو طباعة الكشف: $e');
     }
   }
 
@@ -122,7 +226,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
               ),
               content: SizedBox(
-                width: 720,
+                width: 760,
                 child: registrants.isEmpty
                     ? const Text(
                         'لا يوجد مسجلون حالياً في هذه الدورة',
@@ -134,6 +238,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       )
                     : SingleChildScrollView(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _registrantsSummary(course, registrants.length),
@@ -145,7 +250,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ),
                       ),
               ),
+              actionsAlignment: MainAxisAlignment.start,
               actions: [
+                if (registrants.isNotEmpty)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      _printRegistrantsPdf(course, registrants);
+                    },
+                    icon: const Icon(Icons.print_rounded),
+                    label: const Text('طباعة كشف المشاركين'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: darkPurple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
@@ -249,9 +367,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         textDirection: TextDirection.rtl,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '$label: ',
+            textAlign: TextAlign.right,
             style: const TextStyle(
               color: Colors.black87,
               fontWeight: FontWeight.bold,
@@ -262,6 +382,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Text(
               value.isEmpty ? 'غير محدد' : value,
               textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
               style: const TextStyle(
                 color: Colors.black54,
                 fontSize: 13,
@@ -316,15 +437,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          const Icon(
-            Icons.admin_panel_settings_rounded,
-            color: Colors.white,
-            size: 48,
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Icon(
+              Icons.admin_panel_settings_rounded,
+              color: Colors.white,
+              size: 48,
+            ),
           ),
           const SizedBox(height: 14),
           Text(
             'مرحباً، ${widget.user.fullName}',
             textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
             style: const TextStyle(
               fontSize: 25,
               color: Colors.white,
@@ -335,6 +460,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Text(
             'لوحة شعبة التدريب لإدارة الدورات التدريبية',
             textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
             style: TextStyle(
               color: Colors.white.withOpacity(0.72),
               fontSize: 15,
@@ -385,6 +511,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Text(
             text,
             textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -407,7 +534,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: ElevatedButton.icon(
           onPressed: onTap,
           icon: Icon(icon),
-          label: Text(text),
+          label: Text(text, textAlign: TextAlign.right),
           style: ElevatedButton.styleFrom(
             backgroundColor: darkPurple,
             foregroundColor: Colors.white,
@@ -424,30 +551,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
-Widget _buildActions() {
-  return Row(
-    textDirection: TextDirection.rtl,
-    children: [
-      _actionButton(
-        text: 'إضافة دورة',
-        icon: Icons.add_rounded,
-        onTap: _openAddCourseScreen,
-      ),
-      const SizedBox(width: 12),
-      _actionButton(
-        text: 'إدارة المحاضرين',
-        icon: Icons.groups_rounded,
-        onTap: _openManageInstructorsScreen,
-      ),
-      const SizedBox(width: 12),
-      _actionButton(
-        text: 'تحديث',
-        icon: Icons.refresh_rounded,
-        onTap: _refreshCourses,
-      ),
-    ],
-  );
-}
+
+  Widget _buildActions() {
+    return Row(
+      textDirection: TextDirection.rtl,
+      children: [
+        _actionButton(
+          text: 'إضافة دورة',
+          icon: Icons.add_rounded,
+          onTap: _openAddCourseScreen,
+        ),
+        const SizedBox(width: 12),
+        _actionButton(
+          text: 'إدارة المحاضرين',
+          icon: Icons.groups_rounded,
+          onTap: _openManageInstructorsScreen,
+        ),
+        const SizedBox(width: 12),
+        _actionButton(
+          text: 'تحديث',
+          icon: Icons.refresh_rounded,
+          onTap: _refreshCourses,
+        ),
+      ],
+    );
+  }
 
   Widget _buildErrorView(Object? error) {
     return Center(
@@ -462,13 +590,19 @@ Widget _buildActions() {
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Icon(Icons.error_outline_rounded,
-                  color: Colors.red, size: 44),
+              const Center(
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.red,
+                  size: 44,
+                ),
+              ),
               const SizedBox(height: 12),
               const Text(
                 'تعذر تحميل بيانات لوحة الإدارة',
-                textAlign: TextAlign.center,
+                textAlign: TextAlign.right,
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -478,17 +612,21 @@ Widget _buildActions() {
               const SizedBox(height: 8),
               Text(
                 '$error',
-                textAlign: TextAlign.center,
+                textAlign: TextAlign.right,
+                textDirection: TextDirection.rtl,
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 14),
-              ElevatedButton.icon(
-                onPressed: _refreshCourses,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('إعادة المحاولة'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: darkPurple,
-                  foregroundColor: Colors.white,
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: _refreshCourses,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('إعادة المحاولة'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: darkPurple,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -511,6 +649,7 @@ Widget _buildActions() {
           automaticallyImplyLeading: false,
           title: const Text(
             'شعبة التدريب',
+            textAlign: TextAlign.right,
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           actions: [
@@ -558,7 +697,7 @@ Widget _buildActions() {
                       ),
                       child: const Text(
                         'لا توجد دورات مضافة حالياً',
-                        textAlign: TextAlign.center,
+                        textAlign: TextAlign.right,
                         style: TextStyle(
                           color: darkPurple,
                           fontWeight: FontWeight.bold,
@@ -571,6 +710,8 @@ Widget _buildActions() {
                         course: course,
                         onDetails: () => _openCourseDetails(course),
                         onViewRegistrants: () => _showRegistrants(course),
+                        onEdit: () => _openEditCourseScreen(course),
+                        onDelete: () => _confirmDeleteCourse(course),
                       ),
                     ),
                 ],
@@ -615,12 +756,17 @@ class StatCard extends StatelessWidget {
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white, size: 30),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Icon(icon, color: Colors.white, size: 30),
+          ),
           const SizedBox(height: 10),
           Text(
             value,
+            textAlign: TextAlign.right,
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -630,7 +776,7 @@ class StatCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             title,
-            textAlign: TextAlign.center,
+            textAlign: TextAlign.right,
             style: TextStyle(
               fontSize: 13,
               color: Colors.white.withOpacity(0.70),
@@ -646,12 +792,16 @@ class AdminCourseItem extends StatelessWidget {
   final Course course;
   final VoidCallback onDetails;
   final VoidCallback onViewRegistrants;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const AdminCourseItem({
     super.key,
     required this.course,
     required this.onDetails,
     required this.onViewRegistrants,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   static const Color darkPurple = Color(0xFF2D033B);
@@ -696,6 +846,8 @@ class AdminCourseItem extends StatelessWidget {
           Flexible(
             child: Text(
               text.isEmpty ? 'غير محدد' : text,
+              textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: darkPurple,
@@ -726,14 +878,11 @@ class AdminCourseItem extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         textDirection: TextDirection.rtl,
         children: [
-          Icon(
-            _statusIcon(),
-            size: 16,
-            color: color,
-          ),
+          Icon(_statusIcon(), size: 16, color: color),
           const SizedBox(width: 5),
           Text(
             course.registrationStatusText,
+            textAlign: TextAlign.right,
             style: TextStyle(
               color: color,
               fontSize: 12,
@@ -759,11 +908,16 @@ class AdminCourseItem extends StatelessWidget {
           border: Border.all(color: darkPurple.withOpacity(0.08)),
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Icon(icon, color: deepPurple, size: 22),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Icon(icon, color: deepPurple, size: 22),
+            ),
             const SizedBox(height: 6),
             Text(
               value,
+              textAlign: TextAlign.right,
               style: const TextStyle(
                 color: darkPurple,
                 fontSize: 18,
@@ -773,7 +927,7 @@ class AdminCourseItem extends StatelessWidget {
             const SizedBox(height: 3),
             Text(
               title,
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.right,
               style: const TextStyle(
                 color: Colors.black54,
                 fontSize: 11,
@@ -781,6 +935,47 @@ class AdminCourseItem extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _courseButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback onPressed,
+    required bool filled,
+    bool danger = false,
+  }) {
+    if (filled) {
+      return Expanded(
+        child: ElevatedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          label: Text(text, textAlign: TextAlign.right),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: danger ? Colors.red : darkPurple,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Expanded(
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(text, textAlign: TextAlign.right),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: danger ? Colors.red : deepPurple,
+          side: BorderSide(color: danger ? Colors.red : deepPurple),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );
@@ -813,11 +1008,13 @@ class AdminCourseItem extends StatelessWidget {
         children: [
           Row(
             textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
                   course.title,
                   textAlign: TextAlign.right,
+                  textDirection: TextDirection.rtl,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -889,35 +1086,38 @@ class AdminCourseItem extends StatelessWidget {
           Row(
             textDirection: TextDirection.rtl,
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: onDetails,
-                  icon: const Icon(Icons.info_outline_rounded),
-                  label: const Text('تفاصيل الدورة'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: darkPurple,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
+              _courseButton(
+                text: 'تفاصيل الدورة',
+                icon: Icons.info_outline_rounded,
+                onPressed: onDetails,
+                filled: true,
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onViewRegistrants,
-                  icon: const Icon(Icons.groups_rounded),
-                  label: const Text('مراقبة المسجلين'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: deepPurple,
-                    side: const BorderSide(color: deepPurple),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
+              _courseButton(
+                text: 'تعديل',
+                icon: Icons.edit_rounded,
+                onPressed: onEdit,
+                filled: false,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              _courseButton(
+                text: 'مراقبة المسجلين',
+                icon: Icons.groups_rounded,
+                onPressed: onViewRegistrants,
+                filled: false,
+              ),
+              const SizedBox(width: 10),
+              _courseButton(
+                text: 'حذف',
+                icon: Icons.delete_rounded,
+                onPressed: onDelete,
+                filled: false,
+                danger: true,
               ),
             ],
           ),
