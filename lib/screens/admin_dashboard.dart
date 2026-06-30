@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:printing/printing.dart';
+import 'package:training_courses_app/core/widgets/admin_actions.dart';
+import 'package:training_courses_app/core/widgets/admin_course_item.dart';
+import 'package:training_courses_app/core/widgets/admin_error_view.dart';
+import 'package:training_courses_app/core/widgets/admin_header.dart';
+import 'package:training_courses_app/core/widgets/registrants_dialog.dart';
+import 'package:training_courses_app/core/widgets/responsive_page.dart';
+import 'package:training_courses_app/core/widgets/section_title.dart';
 import 'package:training_courses_app/models/course.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/screens/add_course_screen_custom.dart';
@@ -7,7 +13,6 @@ import 'package:training_courses_app/screens/course_details_screen.dart';
 import 'package:training_courses_app/screens/login_screen.dart';
 import 'package:training_courses_app/screens/manage_instructors_screen.dart';
 import 'package:training_courses_app/services/api_service.dart';
-import 'package:training_courses_app/services/course_registrants_pdf.dart';
 
 class AdminDashboard extends StatefulWidget {
   final User user;
@@ -21,7 +26,6 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   late Future<List<Course>> _coursesFuture;
 
-  static const Color blackColor = Color(0xFF111111);
   static const Color darkPurple = Color(0xFF2D033B);
   static const Color deepPurple = Color(0xFF4B0082);
   static const Color softPurple = Color(0xFF7B2CBF);
@@ -77,6 +81,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _refreshCourses();
       _showMessage('تم تعديل الدورة وتحديث القائمة بنجاح');
     }
+  }
+
+  Future<void> _openCourseDetails(Course course) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CourseDetailsScreen(
+          course: course,
+          user: widget.user,
+        ),
+      ),
+    );
+
+    if (mounted) _refreshCourses();
+  }
+
+  Future<void> _showRegistrants(Course course) async {
+    await RegistrantsDialog.show(
+      context: context,
+      course: course,
+      onRefresh: _refreshCourses,
+      showMessage: _showMessage,
+    );
   }
 
   Future<void> _confirmDeleteCourse(Course course) async {
@@ -146,254 +173,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  Future<void> _openCourseDetails(Course course) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CourseDetailsScreen(
-          course: course,
-          user: widget.user,
-        ),
-      ),
-    );
-
-    if (mounted) _refreshCourses();
-  }
-
-  Future<void> _printRegistrantsPdf(
-    Course course,
-    List<Map<String, dynamic>> registrants,
-  ) async {
-    try {
-      await Printing.layoutPdf(
-        name: 'كشف المشاركين - ${course.title}',
-        onLayout: (_) async {
-          return CourseRegistrantsPdfService.generate(
-            course: course,
-            registrants: registrants,
-          );
-        },
-      );
-    } catch (e) {
-      if (!mounted) return;
-      _showMessage('تعذر إنشاء أو طباعة الكشف: $e');
-    }
-  }
-
-  Future<void> _showRegistrants(Course course) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return const Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            content: SizedBox(
-              height: 90,
-              child: Center(
-                child: CircularProgressIndicator(color: darkPurple),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    try {
-      final registrants = await ApiService.fetchCourseRegistrants(
-        courseId: course.id,
-      );
-
-      if (!mounted) return;
-
-      Navigator.pop(context);
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-              ),
-              title: Text(
-                'المسجلون في ${course.title}',
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  color: darkPurple,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: SizedBox(
-                width: 760,
-                child: registrants.isEmpty
-                    ? const Text(
-                        'لا يوجد مسجلون حالياً في هذه الدورة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _registrantsSummary(course, registrants.length),
-                            const SizedBox(height: 14),
-                            ...registrants.map(
-                              (person) => _registrantCard(person),
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
-              actionsAlignment: MainAxisAlignment.start,
-              actions: [
-                if (registrants.isNotEmpty)
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      _printRegistrantsPdf(course, registrants);
-                    },
-                    icon: const Icon(Icons.print_rounded),
-                    label: const Text('طباعة كشف المشاركين'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: darkPurple,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _refreshCourses();
-                  },
-                  child: const Text('إغلاق'),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      Navigator.pop(context);
-      _showMessage('فشل في جلب بيانات المسجلين');
-    }
-  }
-
-  Widget _registrantsSummary(Course course, int count) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: darkPurple.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: darkPurple.withOpacity(0.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            course.title,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: darkPurple,
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'عدد المسجلين: $count من ${course.capacity} | المتبقي: ${course.remainingSeats}',
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _registrantCard(Map<String, dynamic> person) {
-    final name = person['employee_name']?.toString() ?? '';
-    final employeeId = person['employee_id']?.toString() ?? '';
-    final grade = person['grade']?.toString() ?? '';
-    final workPlace = person['work_place']?.toString() ?? '';
-    final phone = person['phone']?.toString() ?? '';
-    final date = person['registration_date']?.toString() ??
-        person['created_at']?.toString() ??
-        '';
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: darkPurple.withOpacity(0.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            name.isEmpty ? 'اسم غير متوفر' : name,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: darkPurple,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 10),
-          _registrantInfo('الرقم الوظيفي / البصمة', employeeId),
-          _registrantInfo('الدرجة الوظيفية', grade),
-          _registrantInfo('مكان العمل / القسم', workPlace),
-          _registrantInfo('رقم الهاتف', phone),
-          _registrantInfo('تاريخ التسجيل', date),
-        ],
-      ),
-    );
-  }
-
-  Widget _registrantInfo(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        textDirection: TextDirection.rtl,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$label: ',
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value.isEmpty ? 'غير محدد' : value,
-              textAlign: TextAlign.right,
-              textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: Colors.black54,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _logout() {
     Navigator.pushReplacement(
       context,
@@ -404,724 +183,131 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void _showMessage(String text) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(text, textAlign: TextAlign.right),
+        content: Text(
+          text,
+          textAlign: TextAlign.right,
+          textDirection: TextDirection.rtl,
+        ),
         backgroundColor: softPurple,
       ),
     );
   }
 
-  Widget _buildHeader(List<Course> courses) {
-    final totalRegistrations =
-        courses.fold<int>(0, (sum, c) => sum + c.registeredCount);
-
-    final openCourses = courses.where((c) => c.isRegistrationOpen).length;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [blackColor, darkPurple, blackColor],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.24),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const Align(
-            alignment: Alignment.centerRight,
-            child: Icon(
-              Icons.admin_panel_settings_rounded,
-              color: Colors.white,
-              size: 48,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'مرحباً، ${widget.user.fullName}',
-            textAlign: TextAlign.right,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              fontSize: 25,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'لوحة شعبة التدريب لإدارة الدورات التدريبية',
-            textAlign: TextAlign.right,
-            textDirection: TextDirection.rtl,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.72),
-              fontSize: 15,
-            ),
-          ),
-          const SizedBox(height: 22),
-          Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              Expanded(
-                child: StatCard(
-                  icon: Icons.school_rounded,
-                  title: 'الدورات',
-                  value: '${courses.length}',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  icon: Icons.groups_rounded,
-                  title: 'المسجلين',
-                  value: '$totalRegistrations',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  icon: Icons.check_circle_rounded,
-                  title: 'المفتوحة',
-                  value: '$openCourses',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String text, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 12),
-      child: Row(
-        textDirection: TextDirection.rtl,
-        children: [
-          Icon(icon, color: darkPurple),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            textAlign: TextAlign.right,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: darkPurple,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: SizedBox(
-        height: 54,
-        child: ElevatedButton.icon(
-          onPressed: onTap,
-          icon: Icon(icon),
-          label: Text(text, textAlign: TextAlign.right),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: darkPurple,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            textStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActions() {
-    return Row(
-      textDirection: TextDirection.rtl,
-      children: [
-        _actionButton(
-          text: 'إضافة دورة',
-          icon: Icons.add_rounded,
-          onTap: _openAddCourseScreen,
-        ),
-        const SizedBox(width: 12),
-        _actionButton(
-          text: 'إدارة المحاضرين',
-          icon: Icons.groups_rounded,
-          onTap: _openManageInstructorsScreen,
-        ),
-        const SizedBox(width: 12),
-        _actionButton(
-          text: 'تحديث',
-          icon: Icons.refresh_rounded,
-          onTap: _refreshCourses,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildErrorView(Object? error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.red.withOpacity(0.20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Center(
-                child: Icon(
-                  Icons.error_outline_rounded,
-                  color: Colors.red,
-                  size: 44,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'تعذر تحميل بيانات لوحة الإدارة',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '$error',
-                textAlign: TextAlign.right,
-                textDirection: TextDirection.rtl,
-                style: const TextStyle(fontSize: 13),
-              ),
-              const SizedBox(height: 14),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: _refreshCourses,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('إعادة المحاولة'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: darkPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF6F2FA),
-        appBar: AppBar(
-          backgroundColor: blackColor,
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          automaticallyImplyLeading: false,
-          title: const Text(
-            'شعبة التدريب',
-            textAlign: TextAlign.right,
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'تسجيل الخروج',
-              icon: const Icon(Icons.logout_rounded),
-              onPressed: _logout,
-            ),
-          ],
-        ),
-        body: FutureBuilder<List<Course>>(
-          future: _coursesFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: deepPurple),
-              );
-            }
-
-            if (snapshot.hasError) {
-              return _buildErrorView(snapshot.error);
-            }
-
-            final courses = snapshot.data ?? [];
-
-            return RefreshIndicator(
-              color: deepPurple,
-              onRefresh: () async => _refreshCourses(),
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildHeader(courses),
-                  _sectionTitle('صلاحيات شعبة التدريب', Icons.verified_user),
-                  _buildActions(),
-                  _sectionTitle(
-                    'إدارة الدورات المعلنة',
-                    Icons.menu_book_rounded,
-                  ),
-                  if (courses.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: const Text(
-                        'لا توجد دورات مضافة حالياً',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: darkPurple,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
-                  else
-                    ...courses.map(
-                      (course) => AdminCourseItem(
-                        course: course,
-                        onDetails: () => _openCourseDetails(course),
-                        onViewRegistrants: () => _showRegistrants(course),
-                        onEdit: () => _openEditCourseScreen(course),
-                        onDelete: () => _confirmDeleteCourse(course),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _openAddCourseScreen,
-          backgroundColor: darkPurple,
-          foregroundColor: Colors.white,
-          icon: const Icon(Icons.add),
-          label: const Text('إضافة دورة'),
-        ),
-      ),
-    );
-  }
-}
-
-class StatCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-
-  const StatCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 145,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.18),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: Icon(icon, color: Colors.white, size: 30),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.white.withOpacity(0.70),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class AdminCourseItem extends StatelessWidget {
-  final Course course;
-  final VoidCallback onDetails;
-  final VoidCallback onViewRegistrants;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const AdminCourseItem({
-    super.key,
-    required this.course,
-    required this.onDetails,
-    required this.onViewRegistrants,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  static const Color darkPurple = Color(0xFF2D033B);
-  static const Color deepPurple = Color(0xFF4B0082);
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year.toString();
-    return '$year/$month/$day';
-  }
-
-  Color _statusColor() {
-    if (course.isFull) return Colors.red;
-    if (course.isRegistrationExpired) return Colors.grey.shade700;
-    if (course.isEndingSoon) return Colors.orange.shade800;
-    if (course.isRegistrationOpen) return Colors.green.shade700;
-    return deepPurple;
-  }
-
-  IconData _statusIcon() {
-    if (course.isFull) return Icons.event_busy_rounded;
-    if (course.isRegistrationExpired) return Icons.lock_clock_rounded;
-    if (course.isEndingSoon) return Icons.warning_amber_rounded;
-    if (course.isRegistrationOpen) return Icons.check_circle_rounded;
-    return Icons.info_rounded;
-  }
-
-  Widget _chip(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: darkPurple.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        textDirection: TextDirection.rtl,
-        children: [
-          Icon(icon, size: 16, color: deepPurple),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              text.isEmpty ? 'غير محدد' : text,
-              textAlign: TextAlign.right,
-              textDirection: TextDirection.rtl,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: darkPurple,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _statusChip() {
-    final color = _statusColor();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: color.withOpacity(0.55),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        textDirection: TextDirection.rtl,
-        children: [
-          Icon(_statusIcon(), size: 16, color: color),
-          const SizedBox(width: 5),
-          Text(
-            course.registrationStatusText,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _seatInfoBox({
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+  Widget _buildCoursesGrid(List<Course> courses, double maxWidth) {
+    if (courses.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: darkPurple.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: darkPurple.withOpacity(0.08)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: Icon(icon, color: deepPurple, size: 22),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: darkPurple,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              title,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Colors.black54,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _courseButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback onPressed,
-    required bool filled,
-    bool danger = false,
-  }) {
-    if (filled) {
-      return Expanded(
-        child: ElevatedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon),
-          label: Text(text, textAlign: TextAlign.right),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: danger ? Colors.red : darkPurple,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+        child: const Text(
+          'لا توجد دورات مضافة حالياً',
+          textAlign: TextAlign.right,
+          textDirection: TextDirection.rtl,
+          style: TextStyle(
+            color: darkPurple,
+            fontWeight: FontWeight.bold,
           ),
         ),
       );
     }
 
-    return Expanded(
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(text, textAlign: TextAlign.right),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: danger ? Colors.red : deepPurple,
-          side: BorderSide(color: danger ? Colors.red : deepPurple),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+    final itemWidth = maxWidth >= 1000 ? (maxWidth - 16) / 2 : maxWidth;
+
+    return Wrap(
+      textDirection: TextDirection.rtl,
+      alignment: WrapAlignment.end,
+      spacing: 16,
+      runSpacing: 16,
+      children: courses.map((course) {
+        return SizedBox(
+          width: itemWidth,
+          child: AdminCourseItem(
+            course: course,
+            onDetails: () => _openCourseDetails(course),
+            onViewRegistrants: () => _showRegistrants(course),
+            onEdit: () => _openEditCourseScreen(course),
+            onDelete: () => _confirmDeleteCourse(course),
           ),
-        ),
-      ),
+        );
+      }).toList(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final progress = course.capacity == 0
-        ? 0.0
-        : (course.registeredCount / course.capacity).clamp(0.0, 1.0);
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: darkPurple.withOpacity(0.10)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
-          ),
-        ],
+    return ResponsivePage(
+      title: 'شعبة التدريب',
+      enableScroll: false,
+      maxWidth: 1200,
+      actions: [
+        IconButton(
+          tooltip: 'تسجيل الخروج',
+          icon: const Icon(Icons.logout_rounded),
+          onPressed: _logout,
+        ),
+      ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openAddCourseScreen,
+        backgroundColor: darkPurple,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('إضافة دورة'),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Row(
-            textDirection: TextDirection.rtl,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  course.title,
-                  textAlign: TextAlign.right,
-                  textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: darkPurple,
-                  ),
+      child: FutureBuilder<List<Course>>(
+        future: _coursesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: deepPurple),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return AdminErrorView(
+              error: snapshot.error,
+              onRetry: _refreshCourses,
+            );
+          }
+
+          final courses = snapshot.data ?? [];
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final contentWidth = constraints.maxWidth;
+
+              return RefreshIndicator(
+                color: deepPurple,
+                onRefresh: () async => _refreshCourses(),
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 90),
+                  children: [
+                    AdminHeader(
+                      userName: widget.user.fullName,
+                      courses: courses,
+                    ),
+                    const SectionTitle(
+                      text: 'صلاحيات شعبة التدريب',
+                      icon: Icons.verified_user,
+                    ),
+                    AdminActions(
+                      onAddCourse: _openAddCourseScreen,
+                      onManageInstructors: _openManageInstructorsScreen,
+                      onRefresh: _refreshCourses,
+                    ),
+                    const SectionTitle(
+                      text: 'إدارة الدورات المعلنة',
+                      icon: Icons.menu_book_rounded,
+                    ),
+                    _buildCoursesGrid(courses, contentWidth),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              _statusChip(),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.end,
-            textDirection: TextDirection.rtl,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _chip(Icons.person_rounded, course.instructorsText),
-              _chip(Icons.location_on_rounded, course.location),
-              _chip(Icons.calendar_month_rounded, _formatDate(course.date)),
-              _chip(Icons.access_time_rounded, course.time),
-              _chip(
-                Icons.play_circle_rounded,
-                'التسجيل: ${_formatDate(course.registrationStartDate)}',
-              ),
-              _chip(
-                Icons.stop_circle_rounded,
-                'النهاية: ${_formatDate(course.registrationEndDate)}',
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              _seatInfoBox(
-                title: 'المقاعد',
-                value: '${course.capacity}',
-                icon: Icons.event_seat_rounded,
-              ),
-              const SizedBox(width: 10),
-              _seatInfoBox(
-                title: 'المسجلين',
-                value: '${course.registeredCount}',
-                icon: Icons.groups_rounded,
-              ),
-              const SizedBox(width: 10),
-              _seatInfoBox(
-                title: 'المتبقي',
-                value: '${course.remainingSeats}',
-                icon: Icons.how_to_reg_rounded,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: darkPurple.withOpacity(0.08),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                course.isFull ? Colors.red : deepPurple,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              _courseButton(
-                text: 'تفاصيل الدورة',
-                icon: Icons.info_outline_rounded,
-                onPressed: onDetails,
-                filled: true,
-              ),
-              const SizedBox(width: 10),
-              _courseButton(
-                text: 'تعديل',
-                icon: Icons.edit_rounded,
-                onPressed: onEdit,
-                filled: false,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              _courseButton(
-                text: 'مراقبة المسجلين',
-                icon: Icons.groups_rounded,
-                onPressed: onViewRegistrants,
-                filled: false,
-              ),
-              const SizedBox(width: 10),
-              _courseButton(
-                text: 'حذف',
-                icon: Icons.delete_rounded,
-                onPressed: onDelete,
-                filled: false,
-                danger: true,
-              ),
-            ],
-          ),
-        ],
+              );
+            },
+          );
+        },
       ),
     );
   }

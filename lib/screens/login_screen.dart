@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(24),
         margin: const EdgeInsets.only(bottom: 18),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.09),
@@ -164,79 +164,85 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-        child: Row(
-          textDirection: TextDirection.rtl,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Container(
-              width: 62,
-              height: 62,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withOpacity(0.22),
-                    softPurple.withOpacity(0.35),
-                  ],
+            Row(
+              textDirection: TextDirection.rtl,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.22),
+                        softPurple.withOpacity(0.35),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 32),
                 ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(icon, color: Colors.white, size: 34),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
                     title,
                     textAlign: TextAlign.right,
+                    textDirection: TextDirection.rtl,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 21,
+                      fontSize: 23,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 7),
-                  Text(
-                    subtitle,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.74),
-                      fontSize: 13.5,
-                      height: 1.5,
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              subtitle,
+              textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.74),
+                fontSize: 14,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    Text(
+                      buttonText,
+                      style: TextStyle(
+                        color: darkPurple,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 9,
+                    const SizedBox(width: 7),
+                    Icon(
+                      Icons.arrow_back_rounded,
+                      color: darkPurple,
+                      size: 20,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      textDirection: TextDirection.rtl,
-                      children: [
-                        Text(
-                          buttonText,
-                          style: TextStyle(
-                            color: darkPurple,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13.5,
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        Icon(
-                          Icons.arrow_back_rounded,
-                          color: darkPurple,
-                          size: 19,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
