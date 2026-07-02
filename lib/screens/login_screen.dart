@@ -516,11 +516,16 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
   }) {
     return InputDecoration(
       labelText: label,
+      alignLabelWithHint: true,
       labelStyle: const TextStyle(color: Colors.white70),
       prefixIcon: Icon(icon, color: Colors.white70),
       suffixIcon: suffixIcon,
       filled: true,
       fillColor: Colors.black.withOpacity(0.25),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 18,
+      ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide(color: Colors.white.withOpacity(0.22)),
@@ -626,6 +631,7 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
                       TextField(
                         controller: _usernameController,
                         textAlign: TextAlign.right,
+                        textDirection: TextDirection.rtl,
                         style: const TextStyle(color: Colors.white),
                         decoration: _inputDecoration(
                           label: 'اسم المستخدم',
@@ -637,6 +643,7 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
                         controller: _passwordController,
                         obscureText: !_showPassword,
                         textAlign: TextAlign.right,
+                        textDirection: TextDirection.rtl,
                         style: const TextStyle(color: Colors.white),
                         decoration: _inputDecoration(
                           label: 'كلمة المرور',
@@ -696,12 +703,19 @@ class _RoleLoginPageState extends State<_RoleLoginPage> {
                       ),
                       const SizedBox(height: 12),
                       Center(
-                        child: TextButton.icon(
+                        child: TextButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          label: const Text('الرجوع إلى البوابة الرئيسية'),
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.white70,
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            textDirection: TextDirection.rtl,
+                            children: [
+                              Icon(Icons.arrow_back_rounded),
+                              SizedBox(width: 7),
+                              Text('الرجوع إلى البوابة الرئيسية'),
+                            ],
                           ),
                         ),
                       ),

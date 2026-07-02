@@ -1014,12 +1014,19 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                   course.date.year > 2000;
             }).toList();
 
-            if (allCourses.isEmpty) {
+            // واجهة الموظف تعرض فقط الدورات التي ما زال التسجيل عليها متاحاً
+            // أو ممتلئة/تنتهي قريباً، ولا تعرض الدورات التي انتهى التسجيل عليها.
+            // لا يتم حذف أي دورة من قاعدة البيانات، فقط إخفاؤها من هذه الصفحة.
+            final availableCourses = allCourses.where((course) {
+              return !course.isRegistrationExpired;
+            }).toList();
+
+            if (availableCourses.isEmpty) {
               return _buildEmptyView();
             }
 
-            final months = _extractMonths(allCourses);
-            final grades = _extractGrades(allCourses);
+            final months = _extractMonths(availableCourses);
+            final grades = _extractGrades(availableCourses);
 
             if (!months.contains(_selectedMonth)) {
               _selectedMonth = 'الكل';
@@ -1029,7 +1036,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
               _selectedGrade = 'الكل';
             }
 
-            final filteredCourses = _filterCourses(allCourses);
+            final filteredCourses = _filterCourses(availableCourses);
 
             return RefreshIndicator(
               color: deepPurple,
