@@ -1,11 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:training_courses_app/core/theme/theme.dart';
+import 'package:training_courses_app/core/widgets/common/app_page_header.dart';
 import 'package:http/http.dart' as http;
 
 class AddCourseScreenCustom extends StatefulWidget {
   final dynamic course;
+  final bool showScaffold;
+  final VoidCallback? onSaved;
 
-  const AddCourseScreenCustom({super.key, this.course});
+  const AddCourseScreenCustom({
+    super.key,
+    this.course,
+    this.showScaffold = true,
+    this.onSaved,
+  });
 
   @override
   State<AddCourseScreenCustom> createState() => _AddCourseScreenCustomState();
@@ -286,7 +295,11 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
                   : 'تمت إضافة الدورة بنجاح'),
           Colors.green,
         );
-        Navigator.pop(context, true);
+        if (widget.showScaffold) {
+          Navigator.pop(context, true);
+        } else {
+          widget.onSaved?.call();
+        }
       } else {
         _showMessage(
           data['message'] ??
@@ -715,51 +728,12 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            blackColor,
-            darkPurple,
-            blackColor,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Icon(
-            isEditMode
-                ? Icons.edit_note_rounded
-                : Icons.add_circle_outline_rounded,
-            color: Colors.white,
-            size: 48,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            isEditMode ? 'تعديل الدورة التدريبية' : 'إضافة دورة تدريبية جديدة',
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 27,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isEditMode
-                ? 'عدّلي بيانات الدورة والمحاضرين ثم احفظي التغييرات'
-                : 'حددي بيانات الدورة، المحاضرين، المقاعد، ومدة التسجيل',
-            textAlign: TextAlign.right,
-            style: const TextStyle(color: Colors.white70, fontSize: 15),
-          ),
-        ],
-      ),
+    return AppPageHeader(
+      title: isEditMode ? 'تعديل الدورة التدريبية' : 'إضافة دورة تدريبية جديدة',
+      subtitle: isEditMode
+          ? 'عدّلي بيانات الدورة والمحاضرين ثم احفظي التغييرات'
+          : 'حددي بيانات الدورة، المحاضرين، المقاعد، ومدة التسجيل',
+      icon: isEditMode ? Icons.edit_note_rounded : Icons.add_circle_outline_rounded,
     );
   }
 
@@ -884,58 +858,62 @@ class _AddCourseScreenCustomState extends State<AddCourseScreenCustom> {
 
   @override
   Widget build(BuildContext context) {
+    final bodyContent = LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 22),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(
+                      color: darkPurple.withOpacity(0.08),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildRegistrationInfoCard(),
+                      const SizedBox(height: 22),
+                      _buildResponsiveFields(constraints.maxWidth),
+                      const SizedBox(height: 20),
+                      _buildDescriptionField(),
+                      const SizedBox(height: 26),
+                      _buildSubmitButton(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: lightPurple,
-        appBar: AppBar(
-          backgroundColor: blackColor,
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          title: Text(
-            isEditMode ? 'تعديل الدورة' : 'إضافة دورة جديدة',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(22),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    _buildHeader(),
-                    const SizedBox(height: 22),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(26),
-                        border: Border.all(
-                          color: darkPurple.withOpacity(0.08),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildRegistrationInfoCard(),
-                          const SizedBox(height: 22),
-                          _buildResponsiveFields(constraints.maxWidth),
-                          const SizedBox(height: 20),
-                          _buildDescriptionField(),
-                          const SizedBox(height: 26),
-                          _buildSubmitButton(),
-                        ],
-                      ),
-                    ),
-                  ],
+      child: widget.showScaffold
+          ? Scaffold(
+              backgroundColor: lightPurple,
+              appBar: AppBar(
+                backgroundColor: blackColor,
+                foregroundColor: Colors.white,
+                centerTitle: true,
+                title: Text(
+                  isEditMode ? 'تعديل الدورة' : 'إضافة دورة جديدة',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
-            );
-          },
-        ),
-      ),
+              body: bodyContent,
+            )
+          : bodyContent,
     );
   }
 }

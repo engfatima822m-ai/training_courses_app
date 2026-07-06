@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:training_courses_app/services/data_service.dart';
 import 'package:training_courses_app/screens/splash_screen.dart';
-import 'package:training_courses_app/core/theme/app_colors.dart';
+import 'package:training_courses_app/core/theme/theme.dart';
 
 /// ==============================
 /// بداية تشغيل التطبيق

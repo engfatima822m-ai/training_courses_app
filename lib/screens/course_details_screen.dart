@@ -3,6 +3,8 @@ import 'package:training_courses_app/models/course.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/screens/course_registration_screen.dart';
 import 'package:training_courses_app/services/api_service.dart';
+import 'package:training_courses_app/core/theme/theme.dart';
+import 'package:training_courses_app/core/widgets/common/app_page_header.dart';
 
 class CourseDetailsScreen extends StatefulWidget {
   final Course course;
@@ -19,11 +21,6 @@ class CourseDetailsScreen extends StatefulWidget {
 }
 
 class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
-  static const Color blackColor = Color(0xFF111111);
-  static const Color darkPurple = Color(0xFF2D033B);
-  static const Color deepPurple = Color(0xFF4B0082);
-  static const Color lightBackground = Color(0xFFF6F2FA);
-
   bool _isCheckingRegistration = false;
   bool _isWithdrawing = false;
   bool _isRegisteredFromApi = false;
@@ -94,13 +91,13 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
           ),
           title: const Text(
             'تأكيد التسجيل',
             textAlign: TextAlign.right,
             style: TextStyle(
-              color: darkPurple,
+              color: AppColors.darkPurple,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -119,8 +116,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: darkPurple,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.darkPurple,
+                foregroundColor: AppColors.white,
               ),
               child: const Text('نعم، متابعة'),
             ),
@@ -158,13 +155,13 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
           ),
           title: const Text(
             'تأكيد الانسحاب',
             textAlign: TextAlign.right,
             style: TextStyle(
-              color: Colors.red,
+              color: AppColors.danger,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -181,8 +178,8 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                backgroundColor: AppColors.danger,
+                foregroundColor: AppColors.white,
               ),
               child: const Text('نعم، انسحاب'),
             ),
@@ -235,17 +232,17 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(text, textAlign: TextAlign.right),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? AppColors.danger : AppColors.success,
       ),
     );
   }
 
   Color _statusColor() {
-    if (widget.course.isFull) return Colors.red;
+    if (widget.course.isFull) return AppColors.danger;
     if (widget.course.isRegistrationExpired) return Colors.grey.shade700;
     if (widget.course.isEndingSoon) return Colors.orange.shade800;
-    if (widget.course.isRegistrationOpen) return Colors.green.shade700;
-    return deepPurple;
+    if (widget.course.isRegistrationOpen) return AppColors.success;
+    return AppColors.deepPurple;
   }
 
   IconData _statusIcon() {
@@ -261,10 +258,10 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: lightBackground,
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          backgroundColor: blackColor,
-          foregroundColor: Colors.white,
+          backgroundColor: AppColors.darkPurple,
+          foregroundColor: AppColors.white,
           centerTitle: true,
           title: const Text(
             'تفاصيل الدورة',
@@ -278,13 +275,17 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         body: SingleChildScrollView(
           child: Column(
             children: [
-              _buildHeader(),
+              AppPageHeader(
+                title: widget.course.title,
+                subtitle: 'الاطلاع على تفاصيل الدورة التدريبية والتسجيل بها',
+                icon: Icons.school_rounded,
+              ),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(AppSpacing.cardPadding),
                 child: Column(
                   children: [
                     _buildStatusCard(),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpacing.itemSpacing),
                     DetailItem(
                       icon: Icons.person_rounded,
                       title: 'المحاضر',
@@ -342,9 +343,9 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                       title: 'المقاعد المتبقية',
                       value: '${widget.course.remainingSeats}',
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     _buildDescriptionCard(),
-                    const SizedBox(height: 26),
+                    const SizedBox(height: AppSpacing.lg),
                     _buildActionButton(),
                   ],
                 ),
@@ -356,73 +357,23 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(28),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [blackColor, darkPurple, blackColor],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const Align(
-            alignment: Alignment.centerRight,
-            child: Icon(
-              Icons.school_rounded,
-              size: 58,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            widget.course.title,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'الاطلاع على تفاصيل الدورة التدريبية والتسجيل بها',
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.72),
-              fontSize: 15,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildStatusCard() {
     final color = _statusColor();
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: color.withOpacity(0.09),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
         border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
         textDirection: TextDirection.rtl,
         children: [
           Icon(_statusIcon(), color: color, size: 26),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               widget.course.registrationStatusText,
@@ -442,12 +393,12 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
   Widget _buildDescriptionCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
-        color: darkPurple.withOpacity(0.07),
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.darkPurple.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(AppSpacing.cardPadding),
         border: Border.all(
-          color: darkPurple.withOpacity(0.14),
+          color: AppColors.darkPurple.withOpacity(0.14),
         ),
       ),
       child: Column(
@@ -456,20 +407,20 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
           const Row(
             textDirection: TextDirection.rtl,
             children: [
-              Icon(Icons.description_rounded, color: darkPurple),
-              SizedBox(width: 8),
+              Icon(Icons.description_rounded, color: AppColors.darkPurple),
+              SizedBox(width: AppSpacing.sm),
               Text(
                 'وصف الدورة',
                 textAlign: TextAlign.right,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: darkPurple,
+                  color: AppColors.darkPurple,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.itemSpacing),
           Align(
             alignment: Alignment.centerRight,
             child: Text(
@@ -480,7 +431,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
               style: const TextStyle(
                 fontSize: 16,
                 height: 1.7,
-                color: Colors.black87,
+                color: AppColors.textDark,
               ),
             ),
           ),
@@ -494,7 +445,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       return const SizedBox(
         height: 58,
         child: Center(
-          child: CircularProgressIndicator(color: deepPurple),
+          child: CircularProgressIndicator(color: AppColors.deepPurple),
         ),
       );
     }
@@ -510,19 +461,19 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
                   width: 21,
                   height: 21,
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    color: AppColors.white,
                     strokeWidth: 2.4,
                   ),
                 )
               : const Icon(Icons.logout_rounded),
           label: Text(_isWithdrawing ? 'جاري الانسحاب...' : 'الانسحاب من الدورة'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red.shade700,
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.danger,
+            foregroundColor: AppColors.white,
             elevation: 4,
             shadowColor: Colors.black26,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
             ),
             textStyle: const TextStyle(
               fontSize: 18,
@@ -542,12 +493,12 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
           icon: const Icon(Icons.how_to_reg_rounded),
           label: const Text('التسجيل في هذه الدورة'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: darkPurple,
-            foregroundColor: Colors.white,
+            backgroundColor: AppColors.darkPurple,
+            foregroundColor: AppColors.white,
             elevation: 5,
             shadowColor: Colors.black26,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
             ),
             textStyle: const TextStyle(
               fontSize: 18,
@@ -564,7 +515,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Colors.grey.shade600,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
       ),
       child: Text(
         _disabledRegisterMessage,
@@ -572,7 +523,7 @@ class _CourseDetailsScreenState extends State<CourseDetailsScreen> {
         style: const TextStyle(
           fontSize: 17,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: AppColors.white,
         ),
       ),
     );
@@ -591,22 +542,19 @@ class DetailItem extends StatelessWidget {
     required this.value,
   });
 
-  static const Color darkPurple = Color(0xFF2D033B);
-  static const Color deepPurple = Color(0xFF4B0082);
-
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
         width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: AppSpacing.itemSpacing),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
           border: Border.all(
-            color: darkPurple.withOpacity(0.10),
+            color: AppColors.darkPurple.withOpacity(0.10),
           ),
           boxShadow: [
             BoxShadow(
@@ -620,17 +568,17 @@ class DetailItem extends StatelessWidget {
           textDirection: TextDirection.rtl,
           children: [
             Container(
-              padding: const EdgeInsets.all(11),
+              padding: const EdgeInsets.all(AppSpacing.itemSpacing),
               decoration: BoxDecoration(
-                color: darkPurple.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(14),
+                color: AppColors.darkPurple.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
               ),
               child: Icon(
                 icon,
-                color: deepPurple,
+                color: AppColors.deepPurple,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.itemSpacing),
             Expanded(
               child: Align(
                 alignment: Alignment.centerRight,
@@ -645,14 +593,14 @@ class DetailItem extends StatelessWidget {
                         color: Colors.grey.shade600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       value.isEmpty ? 'غير محدد' : value,
                       textAlign: TextAlign.right,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppColors.textDark,
                       ),
                     ),
                   ],

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:training_courses_app/core/theme/theme.dart';
+import 'package:training_courses_app/core/widgets/common/app_page_header.dart';
 import 'package:training_courses_app/models/course.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/screens/course_details_screen.dart';
@@ -17,12 +19,6 @@ class CoursesListScreen extends StatefulWidget {
 }
 
 class _CoursesListScreenState extends State<CoursesListScreen> {
-  static const Color blackColor = Color(0xFF111111);
-  static const Color darkPurple = Color(0xFF2D033B);
-  static const Color deepPurple = Color(0xFF4B0082);
-  static const Color softPurple = Color(0xFF7B2CBF);
-  static const Color lightBackground = Color(0xFFF6F2FA);
-
   final TextEditingController _searchController = TextEditingController();
 
   late Future<List<Course>> _coursesFuture;
@@ -177,11 +173,11 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
   }
 
   Color _statusColor(Course course) {
-    if (course.isFull) return Colors.red;
+    if (course.isFull) return AppColors.danger;
     if (course.isRegistrationExpired) return Colors.grey.shade700;
     if (course.isEndingSoon) return Colors.orange.shade800;
-    if (course.isRegistrationOpen) return Colors.green.shade700;
-    return deepPurple;
+    if (course.isRegistrationOpen) return AppColors.success;
+    return AppColors.deepPurple;
   }
 
   IconData _statusIcon(Course course) {
@@ -193,110 +189,13 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            blackColor,
-            darkPurple,
-            deepPurple,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Stack(
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 88),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text(
-                        'الدورات التدريبية المعلنة',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'شركة توزيع المنتجات النفطية / فرع البصرة',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.78),
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: const Icon(
-                    Icons.school_rounded,
-                    color: Colors.white,
-                    size: 42,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.18),
-              ),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              textDirection: TextDirection.rtl,
-              children: [
-                Icon(Icons.campaign_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  'تابع أحدث الدورات وسجّل بالدورة المناسبة لدرجتك الوظيفية',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return const Padding(
+      padding: EdgeInsets.all(AppSpacing.md),
+      child: AppPageHeader(
+        title: 'الدورات التدريبية المعلنة',
+        subtitle:
+            'شركة توزيع المنتجات النفطية / فرع البصرة\nتابعي أحدث الدورات وسجّلي بالدورة المناسبة لدرجتك الوظيفية',
+        icon: Icons.school_rounded,
       ),
     );
   }
@@ -309,17 +208,22 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     final safeGrades = _uniqueItems(grades);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
         border: Border.all(
-          color: darkPurple.withOpacity(0.08),
+          color: AppColors.darkPurple.withOpacity(0.08),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -330,16 +234,28 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
           TextField(
             controller: _searchController,
             textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
             decoration: InputDecoration(
-              hintText: 'ابحث عن دورة، محاضر، مكان...',
+              hintText: 'ابحثي عن دورة، محاضر، مكان...',
+              hintTextDirection: TextDirection.rtl,
               hintStyle: TextStyle(color: Colors.grey.shade500),
-              prefixIcon: const Icon(Icons.search_rounded, color: deepPurple),
+              prefixIcon: _searchController.text.isEmpty
+                  ? const Icon(Icons.search_rounded, color: AppColors.deepPurple)
+                  : IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _searchText = '');
+                      },
+                    ),
               filled: true,
-              fillColor: lightBackground,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              fillColor: AppColors.background,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.md,
+              ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
                 borderSide: BorderSide.none,
               ),
             ),
@@ -349,7 +265,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
               });
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
           LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth > 650;
@@ -385,7 +301,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                   textDirection: TextDirection.rtl,
                   children: [
                     Expanded(child: monthFilter),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.itemSpacing),
                     Expanded(child: gradeFilter),
                   ],
                 );
@@ -394,7 +310,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
               return Column(
                 children: [
                   monthFilter,
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.itemSpacing),
                   gradeFilter,
                 ],
               );
@@ -417,12 +333,15 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     final safeValue = value != null && safeItems.contains(value) ? value : null;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: lightBackground,
-        borderRadius: BorderRadius.circular(18),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
         border: Border.all(
-          color: darkPurple.withOpacity(0.08),
+          color: AppColors.darkPurple.withOpacity(0.08),
         ),
       ),
       child: DropdownButtonHideUnderline(
@@ -430,7 +349,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
           value: safeValue,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          dropdownColor: Colors.white,
+          dropdownColor: AppColors.white,
           alignment: AlignmentDirectional.centerEnd,
           items: safeItems.map((item) {
             return DropdownMenuItem<String>(
@@ -439,15 +358,15 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
               child: Row(
                 textDirection: TextDirection.rtl,
                 children: [
-                  Icon(icon, color: deepPurple, size: 20),
-                  const SizedBox(width: 8),
+                  Icon(icon, color: AppColors.deepPurple, size: 20),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       displayText(item),
                       textAlign: TextAlign.right,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: darkPurple,
+                        color: AppColors.textDark,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -457,7 +376,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
             );
           }).toList(),
           onChanged: onChanged,
-          hint: Text(title),
+          hint: Text(title, textAlign: TextAlign.right),
         ),
       ),
     );
@@ -465,56 +384,52 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
   Widget _buildSectionTitle(int count) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
-      child: Stack(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.itemSpacing,
+      ),
+      child: Row(
+        textDirection: TextDirection.rtl,
         children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 58),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text(
-                    'قائمة الدورات المتاحة',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: darkPurple,
-                      fontSize: 19,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'عدد النتائج الحالية: $count',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: Colors.grey.shade700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.lightPurple,
+              borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+            ),
+            child: const Icon(
+              Icons.view_agenda_rounded,
+              color: AppColors.deepPurple,
             ),
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    softPurple.withOpacity(0.22),
-                    deepPurple.withOpacity(0.10),
-                  ],
+          const SizedBox(width: AppSpacing.itemSpacing),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              textDirection: TextDirection.rtl,
+              children: [
+                const Text(
+                  'قائمة الدورات المتاحة',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: AppColors.textDark,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.view_agenda_rounded,
-                color: deepPurple,
-              ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'عدد النتائج الحالية: $count',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -527,27 +442,33 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     required String text,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.itemSpacing,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        color: darkPurple.withOpacity(0.07),
+        color: AppColors.darkPurple.withOpacity(0.07),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(
-          color: darkPurple.withOpacity(0.10),
+          color: AppColors.darkPurple.withOpacity(0.10),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         textDirection: TextDirection.rtl,
         children: [
-          Icon(icon, size: 17, color: deepPurple),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: darkPurple,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
+          Icon(icon, size: 17, color: AppColors.deepPurple),
+          const SizedBox(width: AppSpacing.sm),
+          Flexible(
+            child: Text(
+              text.isEmpty ? 'غير محدد' : text,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textDark,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -559,10 +480,13 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     final color = _statusColor(course);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.itemSpacing,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: color.withOpacity(0.10),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
         border: Border.all(color: color.withOpacity(0.25)),
       ),
       child: Row(
@@ -570,9 +494,10 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
         textDirection: TextDirection.rtl,
         children: [
           Icon(_statusIcon(course), color: color, size: 18),
-          const SizedBox(width: 7),
+          const SizedBox(width: AppSpacing.sm),
           Text(
             course.registrationStatusText,
+            textAlign: TextAlign.right,
             style: TextStyle(
               color: color,
               fontSize: 13,
@@ -589,16 +514,17 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: lightBackground,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: darkPurple.withOpacity(0.08)),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+        border: Border.all(color: AppColors.darkPurple.withOpacity(0.08)),
       ),
       child: Wrap(
+        textDirection: TextDirection.rtl,
         alignment: WrapAlignment.start,
-        spacing: 8,
-        runSpacing: 8,
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
         children: [
           _buildInfoChip(
             icon: Icons.event_seat_rounded,
@@ -619,23 +545,26 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
   Widget _buildCourseCard(BuildContext context, Course course) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
         border: Border.all(
-          color: darkPurple.withOpacity(0.10),
+          color: AppColors.darkPurple.withOpacity(0.10),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.075),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 16,
             offset: const Offset(0, 7),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -643,80 +572,86 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
               height: 7,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [blackColor, darkPurple, softPurple],
+                  colors: [
+                    AppColors.darkPurple,
+                    AppColors.deepPurple,
+                    AppColors.softPurple,
+                  ],
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(AppSpacing.cardPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Stack(
+                  Row(
+                    textDirection: TextDirection.rtl,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 70),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                course.title,
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  color: darkPurple,
-                                  fontSize: 18.5,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.4,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'الدرجة المستهدفة: ${course.grade}',
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  color: Colors.grey.shade700,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topRight,
+                            end: Alignment.bottomLeft,
+                            colors: [
+                              AppColors.darkPurple,
+                              AppColors.deepPurple,
                             ],
                           ),
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.borderRadius),
+                        ),
+                        child: const Icon(
+                          Icons.menu_book_rounded,
+                          color: AppColors.white,
+                          size: 29,
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          width: 54,
-                          height: 54,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topRight,
-                              end: Alignment.bottomLeft,
-                              colors: [darkPurple, deepPurple],
+                      const SizedBox(width: AppSpacing.itemSpacing),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            Text(
+                              course.title,
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                color: AppColors.textDark,
+                                fontSize: 18.5,
+                                fontWeight: FontWeight.bold,
+                                height: 1.4,
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: const Icon(
-                            Icons.menu_book_rounded,
-                            color: Colors.white,
-                            size: 29,
-                          ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'الدرجة المستهدفة: ${course.grade}',
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.itemSpacing),
                   Align(
                     alignment: Alignment.centerRight,
                     child: _buildStatusBadge(course),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md),
                   Wrap(
+                    textDirection: TextDirection.rtl,
                     alignment: WrapAlignment.start,
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: [
                       _buildInfoChip(
                         icon: Icons.groups_rounded,
@@ -740,13 +675,13 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppSpacing.md),
                   _buildSeatsBox(course),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: AppSpacing.lg),
                   SizedBox(
                     width: double.infinity,
-                    height: 47,
-                    child: ElevatedButton(
+                    height: 48,
+                    child: ElevatedButton.icon(
                       onPressed: () async {
                         await Navigator.push(
                           context,
@@ -762,26 +697,20 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                           _refreshCourses();
                         }
                       },
+                      icon: const Icon(Icons.visibility_rounded, size: 21),
+                      label: const Text('عرض تفاصيل الدورة'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: darkPurple,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.darkPurple,
+                        foregroundColor: AppColors.white,
                         elevation: 0,
                         textStyle: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.borderRadius),
                         ),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        textDirection: TextDirection.rtl,
-                        children: [
-                          Icon(Icons.visibility_rounded, size: 21),
-                          SizedBox(width: 8),
-                          Text('عرض تفاصيل الدورة'),
-                        ],
                       ),
                     ),
                   ),
@@ -801,15 +730,15 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
         const SizedBox(height: 60),
         const Center(
           child: CircularProgressIndicator(
-            color: deepPurple,
+            color: AppColors.deepPurple,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppSpacing.md),
         const Center(
           child: Text(
             'جاري تحميل الدورات المعلنة...',
             style: TextStyle(
-              color: darkPurple,
+              color: AppColors.textDark,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -823,50 +752,50 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       children: [
         _buildHeader(),
         Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(AppSpacing.cardPadding),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(20),
+              color: AppColors.danger.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(AppSpacing.cardPadding),
               border: Border.all(
-                color: Colors.red.withOpacity(0.20),
+                color: AppColors.danger.withOpacity(0.20),
               ),
             ),
             child: Column(
               children: [
                 const Icon(
                   Icons.wifi_off_rounded,
-                  color: Colors.red,
+                  color: AppColors.danger,
                   size: 42,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.itemSpacing),
                 const Text(
                   'تعذر تحميل الدورات حالياً',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.red,
+                    color: AppColors.danger,
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   '$error',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: Colors.black87,
+                    color: AppColors.textDark,
                     fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.md),
                 ElevatedButton.icon(
                   onPressed: _refreshCourses,
                   icon: const Icon(Icons.refresh_rounded),
                   label: const Text('إعادة المحاولة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: darkPurple,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.darkPurple,
+                    foregroundColor: AppColors.white,
                   ),
                 ),
               ],
@@ -882,39 +811,39 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       children: [
         _buildHeader(),
         Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Container(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(AppSpacing.cardPadding),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
               border: Border.all(
-                color: darkPurple.withOpacity(0.10),
+                color: AppColors.darkPurple.withOpacity(0.10),
               ),
             ),
             child: const Column(
               children: [
                 Icon(
                   Icons.event_busy_rounded,
-                  color: deepPurple,
+                  color: AppColors.deepPurple,
                   size: 48,
                 ),
-                SizedBox(height: 14),
+                SizedBox(height: AppSpacing.md),
                 Text(
                   'لا توجد دورات مطابقة حالياً',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: darkPurple,
+                    color: AppColors.textDark,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: AppSpacing.sm),
                 Text(
-                  'جرّب تغيير البحث أو الفلاتر لعرض نتائج أخرى.',
+                  'جرّبي تغيير البحث أو الفلاتر لعرض نتائج أخرى.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.black54,
+                    color: AppColors.textMuted,
                     height: 1.5,
                   ),
                 ),
@@ -928,39 +857,39 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
 
   Widget _buildNoFilteredResultsView() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Container(
-        padding: const EdgeInsets.all(22),
+        padding: const EdgeInsets.all(AppSpacing.cardPadding),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
           border: Border.all(
-            color: darkPurple.withOpacity(0.10),
+            color: AppColors.darkPurple.withOpacity(0.10),
           ),
         ),
         child: const Column(
           children: [
             Icon(
               Icons.search_off_rounded,
-              color: deepPurple,
+              color: AppColors.deepPurple,
               size: 46,
             ),
-            SizedBox(height: 14),
+            SizedBox(height: AppSpacing.md),
             Text(
               'لا توجد نتائج حسب البحث الحالي',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: darkPurple,
+                color: AppColors.textDark,
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: AppSpacing.sm),
             Text(
               'غيّري كلمة البحث أو الفلتر لعرض دورات أخرى.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.black54,
+                color: AppColors.textMuted,
                 height: 1.5,
               ),
             ),
@@ -975,9 +904,10 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: lightBackground,
+        backgroundColor: AppColors.background,
         appBar: AppBar(
-          backgroundColor: blackColor,
+          backgroundColor: AppColors.darkPurple,
+          foregroundColor: AppColors.white,
           elevation: 0,
           centerTitle: true,
           title: const Text(
@@ -1010,13 +940,9 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
             }
 
             final allCourses = (snapshot.data ?? []).where((course) {
-              return course.title.trim().isNotEmpty &&
-                  course.date.year > 2000;
+              return course.title.trim().isNotEmpty && course.date.year > 2000;
             }).toList();
 
-            // واجهة الموظف تعرض فقط الدورات التي ما زال التسجيل عليها متاحاً
-            // أو ممتلئة/تنتهي قريباً، ولا تعرض الدورات التي انتهى التسجيل عليها.
-            // لا يتم حذف أي دورة من قاعدة البيانات، فقط إخفاؤها من هذه الصفحة.
             final availableCourses = allCourses.where((course) {
               return !course.isRegistrationExpired;
             }).toList();
@@ -1039,10 +965,10 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
             final filteredCourses = _filterCourses(availableCourses);
 
             return RefreshIndicator(
-              color: deepPurple,
+              color: AppColors.deepPurple,
               onRefresh: _refreshCourses,
               child: ListView.builder(
-                padding: const EdgeInsets.only(bottom: 18),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 itemCount:
                     filteredCourses.isEmpty ? 4 : filteredCourses.length + 3,
                 itemBuilder: (context, index) {

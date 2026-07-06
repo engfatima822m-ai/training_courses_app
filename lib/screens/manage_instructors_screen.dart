@@ -1,9 +1,17 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:training_courses_app/core/theme/theme.dart';
+import 'package:training_courses_app/core/widgets/common/app_page_header.dart';
 
 class ManageInstructorsScreen extends StatefulWidget {
-  const ManageInstructorsScreen({super.key});
+  final bool showScaffold;
+
+  const ManageInstructorsScreen({
+    super.key,
+    this.showScaffold = true,
+  });
 
   @override
   State<ManageInstructorsScreen> createState() =>
@@ -11,11 +19,6 @@ class ManageInstructorsScreen extends StatefulWidget {
 }
 
 class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
-  static const Color blackColor = Color(0xFF111111);
-  static const Color darkPurple = Color(0xFF2D033B);
-  static const Color deepPurple = Color(0xFF4B0082);
-  static const Color lightPurple = Color(0xFFF6F2FA);
-
   final String baseUrl = 'http://localhost/training_api';
 
   bool isLoading = true;
@@ -46,18 +49,23 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
 
       final data = jsonDecode(utf8.decode(response.bodyBytes));
 
+      if (!mounted) return;
+
       setState(() {
         instructors = data['success'] == true ? data['data'] ?? [] : [];
         filteredInstructors = instructors;
         isLoading = false;
       });
-    } catch (e) {
+    } catch (_) {
+      if (!mounted) return;
+
       setState(() {
         instructors = [];
         filteredInstructors = [];
         isLoading = false;
       });
-      _showMessage('فشل الاتصال بالسيرفر', Colors.red);
+
+      _showMessage('فشل الاتصال بالسيرفر', AppColors.danger);
     }
   }
 
@@ -106,7 +114,7 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
 
     _showMessage(
       data['message'] ?? 'تمت العملية',
-      data['success'] == true ? Colors.green : Colors.red,
+      data['success'] == true ? AppColors.success : AppColors.danger,
     );
 
     if (data['success'] == true) {
@@ -139,7 +147,7 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
 
     _showMessage(
       data['message'] ?? 'تمت العملية',
-      data['success'] == true ? Colors.green : Colors.red,
+      data['success'] == true ? AppColors.success : AppColors.danger,
     );
 
     if (data['success'] == true) {
@@ -158,7 +166,7 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
 
     _showMessage(
       data['message'] ?? 'تمت العملية',
-      data['success'] == true ? Colors.green : Colors.red,
+      data['success'] == true ? AppColors.success : AppColors.danger,
     );
 
     if (data['success'] == true) {
@@ -200,9 +208,15 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
   }
 
   void _showMessage(String message, Color color) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, textAlign: TextAlign.right),
+        content: Text(
+          message,
+          textAlign: TextAlign.right,
+          textDirection: TextDirection.rtl,
+        ),
         backgroundColor: color,
       ),
     );
@@ -230,18 +244,18 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
             ),
             title: Text(
               isEdit ? 'تعديل بيانات المحاضر' : 'إضافة محاضر جديد',
               textAlign: TextAlign.right,
               style: const TextStyle(
-                color: darkPurple,
+                color: AppColors.darkPurple,
                 fontWeight: FontWeight.bold,
               ),
             ),
             content: SizedBox(
-              width: 450,
+              width: 460,
               child: SingleChildScrollView(
                 child: Column(
                   children: [
@@ -254,6 +268,7 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
                 ),
               ),
             ),
+            actionsAlignment: MainAxisAlignment.start,
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -261,21 +276,23 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: darkPurple,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.darkPurple,
+                  foregroundColor: AppColors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
+                  ),
                 ),
                 onPressed: () async {
                   final name = nameController.text.trim();
                   final phone = phoneController.text.trim();
-                  final specialization =
-                      specializationController.text.trim();
+                  final specialization = specializationController.text.trim();
                   final username = usernameController.text.trim();
                   final password = passwordController.text.trim();
 
                   if (name.isEmpty || username.isEmpty || password.isEmpty) {
                     _showMessage(
                       'الاسم واسم المستخدم وكلمة المرور مطلوبة',
-                      Colors.red,
+                      AppColors.danger,
                     );
                     return;
                   }
@@ -312,16 +329,25 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
 
   Widget _dialogField(String label, TextEditingController controller) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.itemSpacing),
       child: TextField(
         controller: controller,
         textAlign: TextAlign.right,
+        textDirection: TextDirection.rtl,
         decoration: InputDecoration(
           labelText: label,
+          alignLabelWithHint: true,
           filled: true,
-          fillColor: lightPurple,
+          fillColor: AppColors.lightPurple,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
+            borderSide: const BorderSide(
+              color: AppColors.softPurple,
+              width: 1.4,
+            ),
           ),
         ),
       ),
@@ -335,11 +361,22 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            title: const Text('تأكيد الحذف'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.largeRadius),
+            ),
+            title: const Text(
+              'تأكيد الحذف',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: AppColors.darkPurple,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             content: Text(
               'هل تريدين حذف المحاضر: ${instructor['name']} ؟',
               textAlign: TextAlign.right,
             ),
+            actionsAlignment: MainAxisAlignment.start,
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -347,8 +384,11 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.danger,
+                  foregroundColor: AppColors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
+                  ),
                 ),
                 onPressed: () {
                   Navigator.pop(context);
@@ -364,84 +404,92 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
   }
 
   Widget _header() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [blackColor, darkPurple, blackColor],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const AppPageHeader(
+          title: 'إدارة المحاضرين',
+          subtitle: 'إضافة وتعديل حسابات المحاضرين ومتابعة الدورات المرتبطة بهم',
+          icon: Icons.person_rounded,
         ),
-        borderRadius: BorderRadius.circular(26),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Align(
-            alignment: Alignment.centerRight,
-            child: Icon(Icons.groups_rounded, color: Colors.white, size: 48),
-          ),
-          const SizedBox(height: 12),
-          const Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'إدارة المحاضرين',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
+        const SizedBox(height: AppSpacing.md),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 5),
               ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'إضافة وتعديل حسابات المحاضرين ومتابعة الدورات المرتبطة بهم',
-              textAlign: TextAlign.right,
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              _statBox('عدد المحاضرين', instructors.length.toString()),
-              const SizedBox(width: 10),
-              _statBox('نتائج البحث', filteredInstructors.length.toString()),
             ],
           ),
-        ],
-      ),
+          child: Wrap(
+            textDirection: TextDirection.rtl,
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              _statBox('عدد المحاضرين', instructors.length.toString()),
+              _statBox('نتائج البحث', filteredInstructors.length.toString()),
+              ElevatedButton.icon(
+                onPressed: () => _openInstructorDialog(),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('إضافة محاضر'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.darkPurple,
+                  foregroundColor: AppColors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.md,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _statBox(String title, String value) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white24),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.sm,
+        horizontal: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.lightPurple,
+        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+      ),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.darkPurple,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 3),
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 13,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -450,11 +498,12 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
     return TextField(
       controller: searchController,
       textAlign: TextAlign.right,
+      textDirection: TextDirection.rtl,
       onChanged: filterInstructors,
       decoration: InputDecoration(
         hintText: 'ابحث باسم المحاضر أو الهاتف أو الاختصاص أو اسم المستخدم...',
-        prefixIcon: const Icon(Icons.search, color: deepPurple),
-        suffixIcon: searchController.text.isEmpty
+        hintTextDirection: TextDirection.rtl,
+        prefixIcon: searchController.text.isEmpty
             ? null
             : IconButton(
                 icon: const Icon(Icons.close),
@@ -463,10 +512,11 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
                   filterInstructors('');
                 },
               ),
+        suffixIcon: const Icon(Icons.search, color: AppColors.softPurple),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
           borderSide: BorderSide.none,
         ),
       ),
@@ -477,112 +527,135 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
     final coursesCount = _getCoursesCount(instructor);
     final coursesNames = _getCoursesNames(instructor);
 
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.itemSpacing),
+      padding: const EdgeInsets.all(AppSpacing.cardPadding),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.lg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              textDirection: TextDirection.rtl,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  backgroundColor: lightPurple,
-                  child: Text(
-                    (instructor['name']?.toString().isNotEmpty ?? false)
-                        ? instructor['name'].toString()[0]
-                        : 'م',
-                    style: const TextStyle(
-                      color: darkPurple,
-                      fontWeight: FontWeight.bold,
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: AppColors.lightPurple,
+                child: Text(
+                  (instructor['name']?.toString().isNotEmpty ?? false)
+                      ? instructor['name'].toString()[0]
+                      : 'م',
+                  style: const TextStyle(
+                    color: AppColors.darkPurple,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        instructor['name']?.toString() ?? '',
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: darkPurple,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+              ),
+              const SizedBox(width: AppSpacing.itemSpacing),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      instructor['name']?.toString() ?? '',
+                      textAlign: TextAlign.right,
+                      textDirection: TextDirection.rtl,
+                      style: const TextStyle(
+                        color: AppColors.darkPurple,
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.itemSpacing,
+                          vertical: AppSpacing.sm,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.lightPurple,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          '$coursesCount دورة',
+                          textAlign: TextAlign.right,
+                          textDirection: TextDirection.rtl,
+                          style: const TextStyle(
+                            color: AppColors.softPurple,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: lightPurple,
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Text(
-                            '$coursesCount دورة',
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(
-                              color: deepPurple,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const Divider(height: 24),
-            _info('الهاتف', instructor['phone']),
-            _info('الاختصاص', instructor['specialization']),
-            _info('اسم المستخدم', instructor['username']),
-            _info('كلمة المرور', instructor['password']),
-            const SizedBox(height: 8),
-            _coursesSection(coursesNames),
-            const SizedBox(height: 14),
-            Row(
-              textDirection: TextDirection.rtl,
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () =>
-                        _openInstructorDialog(instructor: instructor),
-                    icon: const Icon(Icons.edit),
-                    label: const Text('تعديل'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: deepPurple,
-                      foregroundColor: Colors.white,
+              ),
+            ],
+          ),
+          const Divider(height: 26),
+          _info('الهاتف', instructor['phone'], Icons.phone_rounded),
+          _info(
+            'الاختصاص',
+            instructor['specialization'],
+            Icons.workspace_premium_rounded,
+          ),
+          _info(
+            'اسم المستخدم',
+            instructor['username'],
+            Icons.account_circle_rounded,
+          ),
+          _info('كلمة المرور', instructor['password'], Icons.lock_rounded),
+          const SizedBox(height: AppSpacing.sm),
+          _coursesSection(coursesNames),
+          const SizedBox(height: AppSpacing.itemSpacing),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _openInstructorDialog(instructor: instructor),
+                  icon: const Icon(Icons.edit_rounded),
+                  label: const Text('تعديل'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.deepPurple,
+                    foregroundColor: AppColors.white,
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _confirmDelete(instructor),
-                    icon: const Icon(Icons.delete),
-                    label: const Text('حذف'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmDelete(instructor),
+                  icon: const Icon(Icons.delete_rounded),
+                  label: const Text('حذف'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
                     ),
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -591,67 +664,118 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
     if (coursesNames.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpacing.itemSpacing),
         decoration: BoxDecoration(
-          color: lightPurple,
-          borderRadius: BorderRadius.circular(14),
+          color: AppColors.lightPurple,
+          borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
         ),
         child: const Text(
           'لا توجد دورات مرتبطة بهذا المحاضر حالياً',
           textAlign: TextAlign.right,
-          style: TextStyle(color: Colors.black54),
+          textDirection: TextDirection.rtl,
+          style: TextStyle(color: AppColors.textMuted),
         ),
       );
     }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.itemSpacing),
       decoration: BoxDecoration(
-        color: lightPurple,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.lightPurple,
+        borderRadius: BorderRadius.circular(AppSpacing.itemSpacing),
       ),
       child: Wrap(
         textDirection: TextDirection.rtl,
         alignment: WrapAlignment.start,
-        spacing: 8,
-        runSpacing: 8,
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
         children: coursesNames.map((course) {
           return Chip(
             label: Text(course),
-            backgroundColor: Colors.white,
-            labelStyle: const TextStyle(color: darkPurple),
+            backgroundColor: AppColors.white,
+            labelStyle: const TextStyle(color: AppColors.darkPurple),
           );
         }).toList(),
       ),
     );
   }
 
-  Widget _info(String label, dynamic value) {
+  Widget _info(String label, dynamic value, IconData icon) {
     final text = value?.toString() ?? '';
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Text(
-          '$label: ${text.isEmpty ? 'غير محدد' : text}',
-          textAlign: TextAlign.right,
-          style: const TextStyle(color: Colors.black54),
-        ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        textDirection: TextDirection.rtl,
+        children: [
+          Icon(icon, size: 18, color: AppColors.softPurple),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            '$label: ',
+            textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              color: AppColors.darkPurple,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              text.isEmpty ? 'غير محدد' : text,
+              textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppColors.textMuted),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _emptyBox(String text) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.black54),
-        ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.rtl,
+        style: const TextStyle(color: AppColors.textMuted),
+      ),
+    );
+  }
+
+  Widget _bodyContent() {
+    return RefreshIndicator(
+      color: AppColors.deepPurple,
+      onRefresh: fetchInstructors,
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        children: [
+          _header(),
+          const SizedBox(height: AppSpacing.md),
+          _searchBox(),
+          const SizedBox(height: AppSpacing.lg),
+          if (isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.xxl),
+                child: CircularProgressIndicator(color: AppColors.deepPurple),
+              ),
+            )
+          else if (instructors.isEmpty)
+            _emptyBox('لا يوجد محاضرون حالياً')
+          else if (filteredInstructors.isEmpty)
+            _emptyBox('لا توجد نتائج مطابقة للبحث')
+          else
+            ...filteredInstructors.map((item) => _instructorCard(item)),
+        ],
       ),
     );
   }
@@ -660,56 +784,35 @@ class _ManageInstructorsScreenState extends State<ManageInstructorsScreen> {
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: lightPurple,
-        appBar: AppBar(
-          backgroundColor: blackColor,
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          title: const Text(
-            'إدارة المحاضرين',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            IconButton(
-              onPressed: fetchInstructors,
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: darkPurple,
-          foregroundColor: Colors.white,
-          onPressed: () => _openInstructorDialog(),
-          icon: const Icon(Icons.add),
-          label: const Text('إضافة محاضر'),
-        ),
-        body: RefreshIndicator(
-          onRefresh: fetchInstructors,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _header(),
-              const SizedBox(height: 16),
-              _searchBox(),
-              const SizedBox(height: 18),
-              if (isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(40),
-                    child: CircularProgressIndicator(color: deepPurple),
+      child: widget.showScaffold
+          ? Scaffold(
+              backgroundColor: AppColors.background,
+              appBar: AppBar(
+                backgroundColor: AppColors.darkPurple,
+                foregroundColor: AppColors.white,
+                centerTitle: true,
+                title: const Text(
+                  'إدارة المحاضرين',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                actions: [
+                  IconButton(
+                    tooltip: 'تحديث',
+                    onPressed: fetchInstructors,
+                    icon: const Icon(Icons.refresh),
                   ),
-                )
-              else if (instructors.isEmpty)
-                _emptyBox('لا يوجد محاضرون حالياً')
-              else if (filteredInstructors.isEmpty)
-                _emptyBox('لا توجد نتائج مطابقة للبحث')
-              else
-                ...filteredInstructors.map((item) => _instructorCard(item)),
-            ],
-          ),
-        ),
-      ),
+                ],
+              ),
+              floatingActionButton: FloatingActionButton.extended(
+                backgroundColor: AppColors.darkPurple,
+                foregroundColor: AppColors.white,
+                onPressed: () => _openInstructorDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('إضافة محاضر'),
+              ),
+              body: _bodyContent(),
+            )
+          : _bodyContent(),
     );
   }
 }
