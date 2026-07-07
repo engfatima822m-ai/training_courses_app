@@ -1,49 +1,19 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:training_courses_app/models/user.dart';
-import 'instructor_course_details_screen.dart';
+import 'package:training_courses_app/features/instructor/instructor_course.dart';
+import 'package:training_courses_app/features/instructor/services/instructor_service.dart';
 
-class InstructorCourse {
-  final String id;
-  final String title;
-  final String date;
-  final String time;
-  final String duration;
-  final String location;
-  final String description;
-  final String grade;
-  final String capacity;
-  final int registeredCount;
+import 'package:training_courses_app/features/instructor/widgets/instructor_action_button.dart';
+import 'package:training_courses_app/features/instructor/widgets/instructor_course_card.dart';
+import 'package:training_courses_app/features/instructor/widgets/instructor_header.dart';
+import 'package:training_courses_app/features/instructor/widgets/instructor_info_card.dart';
+import 'package:training_courses_app/features/instructor/widgets/instructor_message_card.dart';
+import 'package:training_courses_app/features/instructor/widgets/instructor_page_header.dart';
+import 'package:training_courses_app/features/instructor/widgets/instructor_report_card.dart';
+import 'package:training_courses_app/features/instructor/widgets/instructor_section_title.dart';
+import 'package:training_courses_app/features/instructor/widgets/instructor_stat_card.dart';
 
-  InstructorCourse({
-    required this.id,
-    required this.title,
-    required this.date,
-    required this.time,
-    required this.duration,
-    required this.location,
-    required this.description,
-    required this.grade,
-    required this.capacity,
-    required this.registeredCount,
-  });
-
-  factory InstructorCourse.fromJson(Map<String, dynamic> json) {
-    return InstructorCourse(
-      id: json['id'].toString(),
-      title: json['title']?.toString() ?? '',
-      date: json['date']?.toString() ?? '',
-      time: json['time']?.toString() ?? '',
-      duration: json['duration']?.toString() ?? '',
-      location: json['location']?.toString() ?? '',
-      description: json['description']?.toString() ?? '',
-      grade: json['grade']?.toString() ?? '',
-      capacity: json['capacity']?.toString() ?? '0',
-      registeredCount: int.tryParse(json['registered_count'].toString()) ?? 0,
-    );
-  }
-}
+export 'package:training_courses_app/features/instructor/instructor_course.dart';
 
 class InstructorDashboard extends StatefulWidget {
   final User user;
@@ -58,17 +28,15 @@ class InstructorDashboard extends StatefulWidget {
 }
 
 class _InstructorDashboardState extends State<InstructorDashboard> {
-  static const Color blackColor = Color(0xFF111111);
-  static const Color darkPurple = Color(0xFF2D033B);
+  static const Color pageBg = Color(0xFFF6F2FA);
   static const Color deepPurple = Color(0xFF4B0082);
+  static const Color selectedBg = Color(0xFFEDE3F8);
+  static const double sideBarWidth = 280;
 
   bool isLoading = true;
   String? errorMessage;
   List<InstructorCourse> courses = [];
-
-  String get apiUrl {
-    return 'http://localhost/training_api/get_instructor_courses.php';
-  }
+  int selectedIndex = 0;
 
   @override
   void initState() {
@@ -83,32 +51,19 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode({
-          'instructor_id': widget.user.employeeId,
-        }),
+      final fetchedCourses = await InstructorService.fetchInstructorCourses(
+        instructorId: widget.user.employeeId,
       );
 
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      if (!mounted) return;
 
-      if (data['success'] == true) {
-        final List list = data['courses'] ?? [];
-
-        setState(() {
-          courses = list.map((item) => InstructorCourse.fromJson(item)).toList();
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          errorMessage = data['message'] ?? 'حدث خطأ أثناء جلب البيانات';
-          isLoading = false;
-        });
-      }
+      setState(() {
+        courses = fetchedCourses;
+        isLoading = false;
+      });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         errorMessage = 'تعذر الاتصال بالخادم';
         isLoading = false;
@@ -151,403 +106,458 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF6F2FA),
-        appBar: AppBar(
-          backgroundColor: blackColor,
-          foregroundColor: Colors.white,
-          centerTitle: true,
-          title: const Text(
-            'واجهة المحاضر',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            IconButton(
-              onPressed: fetchInstructorCourses,
-              icon: const Icon(Icons.refresh_rounded),
-            ),
-          ],
-        ),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
+        backgroundColor: pageBg,
+        body: Row(
+          textDirection: TextDirection.ltr,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 24),
-            _buildSectionTitle('إحصائيات سريعة'),
-            const SizedBox(height: 12),
-            Row(
-              textDirection: TextDirection.rtl,
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    icon: Icons.menu_book_rounded,
-                    title: 'الدورات',
-                    value: totalCourses.toString(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    icon: Icons.groups_rounded,
-                    title: 'المسجلين',
-                    value: totalRegistered.toString(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    icon: Icons.event_available_rounded,
-                    title: 'القادمة',
-                    value: upcomingCourses.toString(),
-                  ),
-                ),
-              ],
+            Expanded(
+              child: _buildPageContent(),
             ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('صلاحيات المحاضر'),
-            const SizedBox(height: 12),
-            _buildPermissionCard(
-              Icons.visibility_rounded,
-              'عرض الدورات المكلف بها',
-            ),
-            _buildPermissionCard(
-              Icons.groups_rounded,
-              'متابعة أعداد المسجلين',
-            ),
-            _buildPermissionCard(
-              Icons.info_outline_rounded,
-              'عرض تفاصيل الدورة التدريبية',
-            ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('الدورات المكلف بها'),
-            const SizedBox(height: 12),
-            if (isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(30),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else if (errorMessage != null)
-              _buildMessageCard(
-                icon: Icons.error_outline_rounded,
-                message: errorMessage!,
-              )
-            else if (courses.isEmpty)
-              _buildMessageCard(
-                icon: Icons.info_outline_rounded,
-                message: 'لا توجد دورات مرتبطة بهذا المحاضر حالياً',
-              )
-            else
-              Align(
-                alignment: Alignment.centerRight,
-                child: SizedBox(
-                  width: 520,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: courses.map((course) {
-                      return _buildCourseCard(course: course);
-                    }).toList(),
-                  ),
-                ),
-              ),
+            _buildSideBar(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            blackColor,
-            darkPurple,
-            blackColor,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
+  Widget _buildPageContent() {
+    return SafeArea(
+      child: IndexedStack(
+        index: selectedIndex,
+        children: [
+          _buildHomePage(),
+          _buildCoursesPage(),
+          _buildRegisteredPage(),
+          _buildReportsPage(),
+          _buildSettingsPage(),
         ],
       ),
-      child: SizedBox(
-        width: double.infinity,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Align(
-              alignment: Alignment.centerRight,
-              child: Icon(
-                Icons.school_rounded,
-                color: Colors.white,
-                size: 52,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              'مرحباً ${widget.user.fullName}',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 29,
-                fontWeight: FontWeight.bold,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'لوحة المحاضر لمتابعة الدورات التدريبية المكلف بها',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.75),
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  static Widget _buildSectionTitle(String title) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Text(
-        title,
-        textAlign: TextAlign.right,
-        style: const TextStyle(
-          color: darkPurple,
-          fontSize: 21,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  static Widget _buildStatCard({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
-    return Container(
-      height: 135,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            darkPurple,
-            deepPurple,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _buildHomePage() {
+    return RefreshIndicator(
+      onRefresh: fetchInstructorCourses,
+      child: ListView(
+        padding: const EdgeInsets.all(24),
         children: [
+          InstructorHeader(
+            user: widget.user,
+            totalCourses: totalCourses,
+            totalRegistered: totalRegistered,
+            upcomingCourses: upcomingCourses,
+          ),
+          const SizedBox(height: 26),
+          const InstructorSectionTitle(
+            title: 'إحصائيات سريعة',
+            icon: Icons.insights_rounded,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: InstructorStatCard(
+                  icon: Icons.menu_book_rounded,
+                  title: 'الدورات',
+                  value: totalCourses.toString(),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: InstructorStatCard(
+                  icon: Icons.groups_rounded,
+                  title: 'المسجلين',
+                  value: totalRegistered.toString(),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: InstructorStatCard(
+                  icon: Icons.event_available_rounded,
+                  title: 'القادمة',
+                  value: upcomingCourses.toString(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 26),
+          const InstructorSectionTitle(
+            title: 'صلاحيات المحاضر',
+            icon: Icons.verified_user_rounded,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: InstructorActionButton(
+                  icon: Icons.visibility_rounded,
+                  text: 'عرض الدورات المكلف بها',
+                  onTap: () => setState(() => selectedIndex = 1),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: InstructorActionButton(
+                  icon: Icons.groups_rounded,
+                  text: 'متابعة أعداد المسجلين',
+                  onTap: () => setState(() => selectedIndex = 2),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: InstructorActionButton(
+                  icon: Icons.refresh_rounded,
+                  text: 'تحديث البيانات',
+                  onTap: fetchInstructorCourses,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 26),
+          const InstructorSectionTitle(
+            title: 'آخر الدورات المكلف بها',
+            icon: Icons.school_rounded,
+          ),
+          const SizedBox(height: 14),
+          _buildCoursesPreview(maxItems: 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoursesPage() {
+    return RefreshIndicator(
+      onRefresh: fetchInstructorCourses,
+      child: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          const InstructorPageHeader(
+            title: 'الدورات المكلف بها',
+            subtitle: 'هنا تظهر جميع الدورات المرتبطة بحساب المحاضر',
+            icon: Icons.menu_book_rounded,
+          ),
+          const SizedBox(height: 20),
+          _buildCoursesList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRegisteredPage() {
+    return RefreshIndicator(
+      onRefresh: fetchInstructorCourses,
+      child: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          const InstructorPageHeader(
+            title: 'المسجلون',
+            subtitle: 'متابعة أعداد المسجلين داخل كل دورة تدريبية',
+            icon: Icons.groups_rounded,
+          ),
+          const SizedBox(height: 20),
+          Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Expanded(
+                child: InstructorStatCard(
+                  icon: Icons.groups_rounded,
+                  title: 'إجمالي المسجلين',
+                  value: totalRegistered.toString(),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: InstructorStatCard(
+                  icon: Icons.school_rounded,
+                  title: 'عدد الدورات',
+                  value: totalCourses.toString(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildCoursesList(showRegisteredFocus: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportsPage() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const InstructorPageHeader(
+          title: 'التقارير',
+          subtitle: 'ملخص سريع عن دورات المحاضر وأعداد المسجلين',
+          icon: Icons.bar_chart_rounded,
+        ),
+        const SizedBox(height: 20),
+        InstructorReportCard(
+          title: 'إجمالي الدورات',
+          value: totalCourses.toString(),
+          icon: Icons.menu_book_rounded,
+        ),
+        InstructorReportCard(
+          title: 'إجمالي المسجلين',
+          value: totalRegistered.toString(),
+          icon: Icons.groups_rounded,
+        ),
+        InstructorReportCard(
+          title: 'الدورات القادمة',
+          value: upcomingCourses.toString(),
+          icon: Icons.event_available_rounded,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingsPage() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const InstructorPageHeader(
+          title: 'الإعدادات',
+          subtitle: 'معلومات حساب المحاضر',
+          icon: Icons.settings_rounded,
+        ),
+        const SizedBox(height: 20),
+        InstructorInfoCard(
+          title: 'اسم المحاضر',
+          value: widget.user.fullName,
+          icon: Icons.person_rounded,
+        ),
+        InstructorInfoCard(
+          title: 'الرقم الوظيفي',
+          value: widget.user.employeeId,
+          icon: Icons.badge_rounded,
+        ),
+        const InstructorInfoCard(
+          title: 'الصلاحية',
+          value: 'محاضر',
+          icon: Icons.verified_user_rounded,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSideBar() {
+    return Container(
+      width: sideBarWidth,
+      height: double.infinity,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          left: BorderSide(
+            color: Color(0xFFE6DDF0),
+            width: 1,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    deepPurple,
+                    Color(0xFF7B1FC7),
+                  ],
+                ),
+              ),
+              child: const Column(
+                children: [
+                  Icon(
+                    Icons.school_rounded,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    'نظام الدورات التدريبية',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'واجهة المحاضر',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            _buildMenuItem(
+              index: 0,
+              title: 'الرئيسية',
+              icon: Icons.home_rounded,
+            ),
+            _buildMenuItem(
+              index: 1,
+              title: 'الدورات التدريبية',
+              icon: Icons.menu_book_rounded,
+            ),
+            _buildMenuItem(
+              index: 2,
+              title: 'المسجلون',
+              icon: Icons.groups_rounded,
+            ),
+            _buildMenuItem(
+              index: 3,
+              title: 'التقارير',
+              icon: Icons.bar_chart_rounded,
+            ),
+            _buildMenuItem(
+              index: 4,
+              title: 'الإعدادات',
+              icon: Icons.settings_rounded,
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: OutlinedButton.icon(
+                  onPressed: fetchInstructorCourses,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('تحديث'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: deepPurple,
+                    side: const BorderSide(color: Color(0xFFE6DDF0)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required int index,
+    required String title,
+    required IconData icon,
+  }) {
+    final bool isSelected = selectedIndex == index;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => setState(() => selectedIndex = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? selectedBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? deepPurple : Colors.grey.shade600,
+                size: 25,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: isSelected ? deepPurple : Colors.grey.shade700,
+                    fontSize: 16,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoursesPreview({required int maxItems}) {
+    if (isLoading || errorMessage != null || courses.isEmpty) {
+      return _buildCoursesList();
+    }
+
+    final visibleCourses = courses.take(maxItems).toList();
+
+    return Column(
+      children: [
+        ...visibleCourses.map((course) {
+          return InstructorCourseCard(course: course);
+        }),
+        if (courses.length > maxItems)
           Align(
             alignment: Alignment.centerRight,
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            title,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: Colors.white70,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _buildPermissionCard(
-    IconData icon,
-    String text,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        textDirection: TextDirection.rtl,
-        children: [
-          Icon(
-            icon,
-            color: deepPurple,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
+            child: TextButton.icon(
+              onPressed: () => setState(() => selectedIndex = 1),
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text('عرض جميع الدورات'),
+              style: TextButton.styleFrom(
+                foregroundColor: deepPurple,
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
-  static Widget _buildMessageCard({
-    required IconData icon,
-    required String message,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        textDirection: TextDirection.rtl,
-        children: [
-          Icon(icon, color: deepPurple),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: darkPurple,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _buildCourseInfoLine({
-    required String label,
-    required String value,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: Text(
-        '$label: $value',
-        textAlign: TextAlign.right,
-        textDirection: TextDirection.rtl,
-        style: const TextStyle(fontSize: 13),
-      ),
-    );
-  }
-
-  Widget _buildCourseCard({
-    required InstructorCourse course,
-  }) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        child: Column(
-          textDirection: TextDirection.rtl,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              course.title,
-              textAlign: TextAlign.right,
-              textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                fontSize: 17,
-                color: darkPurple,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildCourseInfoLine(
-              label: 'تاريخ الدورة',
-              value: course.date,
-            ),
-            const SizedBox(height: 4),
-            _buildCourseInfoLine(
-              label: 'وقت الدورة',
-              value: course.time,
-            ),
-            const SizedBox(height: 4),
-            _buildCourseInfoLine(
-              label: 'مكان الدورة',
-              value: course.location,
-            ),
-            const SizedBox(height: 4),
-            _buildCourseInfoLine(
-              label: 'عدد المسجلين',
-              value: course.registeredCount.toString(),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 36,
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => InstructorCourseDetailsScreen(
-                        course: course,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.info_outline, size: 18),
-                label: const Text(
-                  'عرض التفاصيل',
-                  style: TextStyle(fontSize: 13),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: darkPurple,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
+  Widget _buildCoursesList({bool showRegisteredFocus = false}) {
+    if (isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(35),
+          child: CircularProgressIndicator(),
         ),
-      ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return InstructorMessageCard(
+        icon: Icons.error_outline_rounded,
+        message: errorMessage!,
+      );
+    }
+
+    if (courses.isEmpty) {
+      return const InstructorMessageCard(
+        icon: Icons.info_outline_rounded,
+        message: 'لا توجد دورات مرتبطة بهذا المحاضر حالياً',
+      );
+    }
+
+    return Column(
+      children: courses.map((course) {
+        return InstructorCourseCard(
+          course: course,
+          showRegisteredFocus: showRegisteredFocus,
+        );
+      }).toList(),
     );
   }
 }

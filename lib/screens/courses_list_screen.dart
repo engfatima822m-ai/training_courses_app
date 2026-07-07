@@ -8,10 +8,12 @@ import 'package:training_courses_app/services/api_service.dart';
 
 class CoursesListScreen extends StatefulWidget {
   final User user;
+  final bool showAppBar;
 
   const CoursesListScreen({
     super.key,
     required this.user,
+    this.showAppBar = true,
   });
 
   @override
@@ -194,7 +196,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       child: AppPageHeader(
         title: 'الدورات التدريبية المعلنة',
         subtitle:
-            'شركة توزيع المنتجات النفطية / فرع البصرة\nتابعي أحدث الدورات وسجّلي بالدورة المناسبة لدرجتك الوظيفية',
+            'شركة توزيع المنتجات النفطية / فرع البصرة\nتابع أحدث الدورات وسجّل بالدورة المناسبة لدرجتك الوظيفية',
         icon: Icons.school_rounded,
       ),
     );
@@ -905,29 +907,31 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: AppColors.darkPurple,
-          foregroundColor: AppColors.white,
-          elevation: 0,
-          centerTitle: true,
-          title: const Text(
-            'الدورات التدريبية',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'تحديث',
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _refreshCourses,
-            ),
-          ],
-        ),
+        appBar: widget.showAppBar
+            ? AppBar(
+                backgroundColor: AppColors.darkPurple,
+                foregroundColor: AppColors.white,
+                elevation: 0,
+                centerTitle: true,
+                title: const Text(
+                  'الدورات التدريبية',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                actions: [
+                  IconButton(
+                    tooltip: 'تحديث',
+                    icon: const Icon(Icons.refresh_rounded),
+                    onPressed: _refreshCourses,
+                  ),
+                ],
+              )
+            : null,
         body: FutureBuilder<List<Course>>(
           future: _coursesFuture,
           builder: (context, snapshot) {

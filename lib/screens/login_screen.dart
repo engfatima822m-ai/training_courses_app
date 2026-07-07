@@ -6,6 +6,7 @@ import 'package:training_courses_app/screens/admin_dashboard.dart';
 import 'package:training_courses_app/screens/courses_list_screen.dart';
 import 'package:training_courses_app/screens/instructor_dashboard.dart';
 import 'package:training_courses_app/screens/splash_screen.dart';
+import 'package:training_courses_app/features/employee/employee_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -108,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CoursesListScreen(user: _buildGuestUser()),
+        builder: (context) => EmployeeDashboard(user: _buildGuestUser()),
       ),
     );
   }

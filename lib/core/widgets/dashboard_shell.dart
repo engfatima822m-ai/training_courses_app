@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:training_courses_app/core/theme/theme.dart';
+import 'package:training_courses_app/core/widgets/common/app_back_button.dart';
 
 class DashboardShell extends StatelessWidget {
   final String title;
@@ -33,7 +34,6 @@ class DashboardShell extends StatelessWidget {
               ),
             ),
 
-            // القائمة الجانبية الثابتة على اليمين
             Container(
               width: 290,
               decoration: const BoxDecoration(
@@ -57,30 +57,44 @@ class DashboardShell extends StatelessWidget {
                         ],
                       ),
                     ),
-                    child: const Column(
+                    child: Stack(
                       children: [
-                        Icon(
-                          Icons.school_rounded,
-                          color: AppColors.white,
-                          size: 54,
-                        ),
-                        SizedBox(height: AppSpacing.itemSpacing),
-                        Text(
-                          'نظام الدورات التدريبية',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.white,
-                            fontSize: 21,
-                            fontWeight: FontWeight.bold,
+                        Positioned(
+                          top: -6,
+                          right: -10,
+                          child: AppBackButton(
+                            onTap: () => Navigator.pop(context),
                           ),
                         ),
-                        SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'شعبة التدريب',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.white,
-                            fontSize: 15,
+                        Padding(
+                          padding: const EdgeInsets.only(top: 30),
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.school_rounded,
+                                color: AppColors.white,
+                                size: 54,
+                              ),
+                              const SizedBox(height: AppSpacing.itemSpacing),
+                              const Text(
+                                'نظام الدورات التدريبية',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                title,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: AppColors.white,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
