@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:training_courses_app/features/instructor/services/course_material_service.dart';
 
 import '../services/api_service.dart';
 
@@ -41,11 +42,17 @@ class _InstructorCourseDetailsScreenState
 
     try {
       final url = Uri.parse(
-        '${ApiService.baseUrl}/get_course_registrations.php?course_id=${widget.course.id}',
+        '${ApiService.baseUrl}/get_course_registrations.php'
+        '?course_id=${widget.course.id}',
       );
 
       final response = await http.get(url);
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+      final data = jsonDecode(
+        utf8.decode(response.bodyBytes),
+      );
+
+      if (!mounted) return;
 
       if (data['success'] == true) {
         setState(() {
@@ -55,11 +62,14 @@ class _InstructorCourseDetailsScreenState
       } else {
         setState(() {
           registrations = [];
-          errorMessage = data['message']?.toString() ?? 'حدث خطأ أثناء الجلب';
+          errorMessage =
+              data['message']?.toString() ?? 'حدث خطأ أثناء الجلب';
           isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         registrations = [];
         errorMessage = 'تعذر الاتصال بالخادم';
@@ -86,11 +96,21 @@ class _InstructorCourseDetailsScreenState
               ),
             ),
             pw.SizedBox(height: 20),
-            pw.Text('اسم الدورة: ${widget.course.title}'),
-            pw.Text('التاريخ: ${widget.course.date}'),
-            pw.Text('الوقت: ${widget.course.time}'),
-            pw.Text('المكان: ${widget.course.location}'),
-            pw.Text('عدد المسجلين: ${registrations.length}'),
+            pw.Text(
+              'اسم الدورة: ${widget.course.title}',
+            ),
+            pw.Text(
+              'التاريخ: ${widget.course.date}',
+            ),
+            pw.Text(
+              'الوقت: ${widget.course.time}',
+            ),
+            pw.Text(
+              'المكان: ${widget.course.location}',
+            ),
+            pw.Text(
+              'عدد المسجلين: ${registrations.length}',
+            ),
             pw.SizedBox(height: 20),
             pw.TableHelper.fromTextArray(
               headers: [
@@ -127,15 +147,54 @@ class _InstructorCourseDetailsScreenState
     if (registrations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('لا توجد أسماء للطباعة حالياً'),
+          content: Text(
+            'لا توجد أسماء للطباعة حالياً',
+            textAlign: TextAlign.right,
+          ),
         ),
       );
+
       return;
     }
 
     await Printing.layoutPdf(
       onLayout: (format) async => _buildPdf(),
     );
+  }
+
+  Future<void> uploadMaterialPdf() async {
+    try {
+      final result =
+          await CourseMaterialService.uploadCourseMaterial(
+        courseId: widget.course.id.toString(),
+        title: widget.course.title.toString(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message']?.toString() ?? 'تمت العملية',
+            textAlign: TextAlign.right,
+          ),
+          backgroundColor:
+              result['success'] == true ? Colors.green : Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'حدث خطأ أثناء رفع الملف',
+            textAlign: TextAlign.right,
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -146,18 +205,38 @@ class _InstructorCourseDetailsScreenState
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xFFF6F2FA),
+
+        // شريط عنوان الصفحة
         appBar: AppBar(
-          title: const Text('تفاصيل الدورة'),
+          automaticallyImplyLeading: false,
+          title: const Text(
+            'تفاصيل الدورة',
+          ),
           centerTitle: true,
           backgroundColor: const Color(0xFF2D033B),
           foregroundColor: Colors.white,
+
+          // السهم وزر التحديث يظهران في أعلى اليسار
           actions: [
             IconButton(
+              tooltip: 'تحديث البيانات',
               onPressed: fetchRegistrations,
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(
+                Icons.refresh_rounded,
+              ),
+            ),
+            IconButton(
+              tooltip: 'رجوع',
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+              ),
             ),
           ],
         ),
+
         body: RefreshIndicator(
           onRefresh: fetchRegistrations,
           child: ListView(
@@ -169,6 +248,7 @@ class _InstructorCourseDetailsScreenState
               const SizedBox(height: 20),
               _registrationsTitle(),
               const SizedBox(height: 12),
+
               if (isLoading)
                 const Center(
                   child: Padding(
@@ -184,7 +264,8 @@ class _InstructorCourseDetailsScreenState
               else if (registrations.isEmpty)
                 _messageCard(
                   icon: Icons.info_outline,
-                  message: 'لا يوجد موظفون مسجلون في هذه الدورة حالياً',
+                  message:
+                      'لا يوجد موظفون مسجلون في هذه الدورة حالياً',
                 )
               else
                 _registrationsList(),
@@ -216,13 +297,34 @@ class _InstructorCourseDetailsScreenState
               ),
             ),
             const SizedBox(height: 16),
-            _infoRow('التاريخ', course.date.toString()),
-            _infoRow('الوقت', course.time.toString()),
-            _infoRow('المدة', course.duration.toString()),
-            _infoRow('المكان', course.location.toString()),
-            _infoRow('الفئة المشمولة', course.grade.toString()),
-            _infoRow('السعة', course.capacity.toString()),
-            _infoRow('عدد المسجلين', registrations.length.toString()),
+            _infoRow(
+              'التاريخ',
+              course.date.toString(),
+            ),
+            _infoRow(
+              'الوقت',
+              course.time.toString(),
+            ),
+            _infoRow(
+              'المدة',
+              course.duration.toString(),
+            ),
+            _infoRow(
+              'المكان',
+              course.location.toString(),
+            ),
+            _infoRow(
+              'الفئة المشمولة',
+              course.grade.toString(),
+            ),
+            _infoRow(
+              'السعة',
+              course.capacity.toString(),
+            ),
+            _infoRow(
+              'عدد المسجلين',
+              registrations.length.toString(),
+            ),
             const SizedBox(height: 12),
             const Text(
               'وصف الدورة:',
@@ -236,7 +338,9 @@ class _InstructorCourseDetailsScreenState
             Text(
               course.description.toString(),
               textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 15),
+              style: const TextStyle(
+                fontSize: 15,
+              ),
             ),
           ],
         ),
@@ -245,30 +349,66 @@ class _InstructorCourseDetailsScreenState
   }
 
   Widget _actionsRow() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: fetchRegistrations,
-            icon: const Icon(Icons.refresh),
-            label: const Text('تحديث'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4B0082),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: fetchRegistrations,
+                icon: const Icon(
+                  Icons.refresh,
+                ),
+                label: const Text(
+                  'تحديث',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4B0082),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: printRegistrations,
+                icon: const Icon(
+                  Icons.print,
+                ),
+                label: const Text(
+                  'طباعة الأسماء',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF111111),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: printRegistrations,
-            icon: const Icon(Icons.print),
-            label: const Text('طباعة الأسماء'),
+            onPressed: uploadMaterialPdf,
+            icon: const Icon(
+              Icons.picture_as_pdf_rounded,
+            ),
+            label: const Text(
+              'رفع مادة الدورة PDF',
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF111111),
+              backgroundColor: const Color(0xFF2D033B),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                vertical: 13,
+              ),
             ),
           ),
         ),
@@ -308,7 +448,9 @@ class _InstructorCourseDetailsScreenState
         final item = entry.value;
 
         return Card(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: const EdgeInsets.only(
+            bottom: 10,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -343,13 +485,20 @@ class _InstructorCourseDetailsScreenState
     );
   }
 
-  Widget _infoRow(String title, String value) {
+  Widget _infoRow(
+    String title,
+    String value,
+  ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.only(
+        bottom: 9,
+      ),
       child: Text(
         '$title: $value',
         textAlign: TextAlign.right,
-        style: const TextStyle(fontSize: 15),
+        style: const TextStyle(
+          fontSize: 15,
+        ),
       ),
     );
   }
@@ -375,7 +524,9 @@ class _InstructorCourseDetailsScreenState
               child: Text(
                 message,
                 textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 16),
+                style: const TextStyle(
+                  fontSize: 16,
+                ),
               ),
             ),
           ],

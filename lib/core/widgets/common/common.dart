@@ -1,4 +1,4 @@
-library common_widgets;
+library;
 
 export 'app_card.dart';
 export 'app_info_row.dart';

@@ -1,4 +1,4 @@
-library app_theme;
+library;
 
 export 'app_colors.dart';
 export 'app_spacing.dart';

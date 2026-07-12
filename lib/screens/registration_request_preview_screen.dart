@@ -3,8 +3,6 @@ import 'package:printing/printing.dart';
 import 'package:training_courses_app/models/course.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/services/registration_request_pdf.dart';
-import 'package:arabic_reshaper/arabic_reshaper.dart';
-import 'package:bidi/bidi.dart' as bidi;
 class RegistrationRequestPreviewScreen extends StatelessWidget {
   final User user;
   final Course course;

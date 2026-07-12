@@ -22,6 +22,7 @@ dependencies:
   pdf: ^3.11.3
   printing: ^5.14.3
   arabic_reshaper: 0.0.1
+  file_picker: ^8.1.2
   bidi: 2.0.10
 
   # file_picker: ^6.1.1

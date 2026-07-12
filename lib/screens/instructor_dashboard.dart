@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/features/instructor/instructor_course.dart';
 import 'package:training_courses_app/features/instructor/services/instructor_service.dart';
+import 'package:training_courses_app/screens/login_screen.dart';
 
 import 'package:training_courses_app/features/instructor/widgets/instructor_action_button.dart';
 import 'package:training_courses_app/features/instructor/widgets/instructor_course_card.dart';
@@ -69,6 +70,16 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
         isLoading = false;
       });
     }
+  }
+
+  void _goToLoginScreen() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LoginScreen(),
+      ),
+      (route) => false,
+    );
   }
 
   int get totalCourses => courses.length;
@@ -371,15 +382,27 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
                   ],
                 ),
               ),
-              child: const Column(
+              child: Column(
                 children: [
-                  Icon(
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      tooltip: 'الرجوع إلى تسجيل الدخول',
+                      onPressed: _goToLoginScreen,
+                      icon: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const Icon(
                     Icons.school_rounded,
                     color: Colors.white,
                     size: 48,
                   ),
-                  SizedBox(height: 14),
-                  Text(
+                  const SizedBox(height: 14),
+                  const Text(
                     'نظام الدورات التدريبية',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -388,8 +411,8 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 6),
-                  Text(
+                  const SizedBox(height: 6),
+                  const Text(
                     'واجهة المحاضر',
                     textAlign: TextAlign.center,
                     style: TextStyle(

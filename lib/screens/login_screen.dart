@@ -3,13 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:training_courses_app/models/user.dart';
 import 'package:training_courses_app/screens/admin_dashboard.dart';
-import 'package:training_courses_app/screens/courses_list_screen.dart';
 import 'package:training_courses_app/screens/instructor_dashboard.dart';
 import 'package:training_courses_app/screens/splash_screen.dart';
 import 'package:training_courses_app/features/employee/employee_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
