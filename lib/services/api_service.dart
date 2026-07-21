@@ -7,6 +7,7 @@ class ApiService {
   static String get baseUrl {
     if (kIsWeb) {
       return 'http://localhost/training_api';
+      //  return 'http://172.20.10.2/training_api';
     }
 
     return 'http://localhost/training_api';
